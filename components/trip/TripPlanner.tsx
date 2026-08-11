@@ -1,12 +1,37 @@
 "use client";
 import { useState, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { MapPin, Navigation, Car, Fuel, LocateFixed } from "lucide-react";
+import { MapPin, Navigation, Navigation2, ExternalLink, Car, Fuel, LocateFixed } from "lucide-react";
 import type { Coordenadas, Gasolinera, Vehiculo, TipoCombustible } from "@/types";
 import type { PlanViaje } from "@/types/trip";
 import { planificarViaje, geocodificarDireccion } from "@/lib/routing";
 import { Spinner } from "@/components/ui/Spinner";
+import { Button } from "@/components/ui/Button";
 import { AutocompleteInput } from "@/components/trip/AutocompleteInput";
+
+function urlGoogleMaps(plan: PlanViaje): string {
+  const coord = (c: Coordenadas) => `${c.lat},${c.lng}`;
+  const params = new URLSearchParams({
+    api: "1",
+    origin: coord(plan.origen),
+    destination: coord(plan.destinoCoordenadas),
+    travelmode: "driving",
+  });
+  if (plan.paradas.length > 0) {
+    params.set(
+      "waypoints",
+      plan.paradas
+        .map((p) => `${p.gasolinera.latitud},${p.gasolinera.longitud}`)
+        .join("|")
+    );
+  }
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
+function urlAppleMaps(plan: PlanViaje): string {
+  const { lat, lng } = plan.destinoCoordenadas;
+  return `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
+}
 
 const RouteMap = dynamic(
   () => import("@/components/trip/RouteMap").then((m) => m.RouteMap),
@@ -211,6 +236,21 @@ export function TripPlanner({
               </p>
             </div>
           )}
+
+          <div className="flex gap-2">
+            <a href={urlGoogleMaps(plan)} target="_blank" rel="noopener noreferrer" className="flex-1">
+              <Button variante="primario" className="w-full gap-1.5">
+                <Navigation2 className="w-4 h-4" />
+                Iniciar en Google Maps
+              </Button>
+            </a>
+            <a href={urlAppleMaps(plan)} target="_blank" rel="noopener noreferrer">
+              <Button variante="secundario" className="gap-1.5">
+                <ExternalLink className="w-4 h-4" />
+                Apple
+              </Button>
+            </a>
+          </div>
         </>
       )}
 

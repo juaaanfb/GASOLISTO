@@ -271,7 +271,7 @@ export default function HomePage() {
             vehiculo={vehiculoEditando}
             esNuevo={esVehiculoNuevo}
             onGuardar={handleGuardarVehiculo}
-            onEliminar={vehiculoEditando.id !== "default" ? handleEliminarVehiculo : undefined}
+            onEliminar={!esVehiculoNuevo && vehiculoEditando.id !== "default" ? handleEliminarVehiculo : undefined}
             onCancelar={() => handleTabChange("vehiculos")}
           />
         )}

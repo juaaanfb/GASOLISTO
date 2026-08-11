@@ -1,6 +1,6 @@
 import type { Coordenadas, Gasolinera, Vehiculo, TipoCombustible } from "@/types";
 import type { PlanViaje, ParadaRepostaje } from "@/types/trip";
-import { calcularDistancia, obtenerPrecio } from "@/lib/calculos";
+import { calcularDistancia, calcularEstadisticas, obtenerPrecio } from "@/lib/calculos";
 
 export async function geocodificarDireccion(texto: string): Promise<Coordenadas> {
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(texto)}&format=json&limit=1&countrycodes=es`;
@@ -110,17 +110,16 @@ export async function planificarViaje(
     throw new Error("SIN_GASOLINERAS");
   }
 
-  const costeEstimado =
-    Math.round(paradas.reduce((s, p) => s + p.costeRepostaje, 0) * 100) / 100;
+  // Coste del viaje completo (no solo de las paradas): litros que consume
+  // el vehículo en toda la ruta al precio medio de la zona. Si el depósito
+  // cubre el trayecto sin parar, el coste no puede mostrarse como 0€.
+  const { media: precioMedio, maximo: precioMax } = calcularEstadisticas(todasGasolineras, combustible);
+  const litrosTotalesViaje = (distanciaKm / 100) * vehiculo.consumo;
+  const costeEstimado = Math.round(litrosTotalesViaje * precioMedio * 100) / 100;
 
-  const preciosDisponibles = todasGasolineras
-    .map((g) => obtenerPrecio(g, combustible))
-    .filter((p): p is number => p !== undefined);
-  const precioMax = preciosDisponibles.length ? Math.max(...preciosDisponibles) : 0;
-  const totalLitros = paradas.reduce((s, p) => s + p.litrosARepostar, 0);
   const ahorroEstimado = Math.max(
     0,
-    Math.round((precioMax * totalLitros - costeEstimado) * 100) / 100
+    Math.round((litrosTotalesViaje * (precioMax - precioMedio)) * 100) / 100
   );
 
   return {
