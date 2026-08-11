@@ -56,8 +56,40 @@ function mapearEstacion(est: MitecoEstacion, fecha: string): Gasolinera {
   };
 }
 
+// Caché en memoria del proceso: evita golpear la API pública del MITECO
+// (respuesta de ~16MB) en cada carga de página. Los precios de gasolineras
+// no cambian minuto a minuto, así que unos minutos de margen no afectan
+// a la promesa de "precios en tiempo real".
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+let cache: { datos: Gasolinera[]; timestamp: number } | null = null;
+let peticionEnVuelo: Promise<Gasolinera[]> | null = null;
+
 // Obtiene todas las estaciones terrestres de España
 export async function obtenerTodasEstaciones(): Promise<Gasolinera[]> {
+  if (cache && Date.now() - cache.timestamp < CACHE_TTL_MS) {
+    return cache.datos;
+  }
+
+  // Si ya hay una petición en curso, todas las llamadas concurrentes
+  // esperan esa misma promesa en vez de disparar fetches duplicados.
+  if (peticionEnVuelo) {
+    return peticionEnVuelo;
+  }
+
+  peticionEnVuelo = fetchYMapearEstaciones()
+    .then((datos) => {
+      cache = { datos, timestamp: Date.now() };
+      return datos;
+    })
+    .finally(() => {
+      peticionEnVuelo = null;
+    });
+
+  return peticionEnVuelo;
+}
+
+async function fetchYMapearEstaciones(): Promise<Gasolinera[]> {
   const respuesta = await fetch(URL_BASE, {
     cache: "no-store",
     headers: { Accept: "application/json" },
