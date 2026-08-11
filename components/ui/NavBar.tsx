@@ -32,10 +32,13 @@ export function NavBar({ tabActiva, onChange, aviso }: NavBarProps) {
             key={id}
             onClick={() => onChange(id)}
             className={cn(
-              "flex-1 flex flex-col items-center gap-1 py-3 transition-colors",
-              tabActiva === id ? "text-gray-900" : "text-gray-400 hover:text-gray-600"
+              "relative flex-1 flex flex-col items-center gap-1 py-3 transition-colors",
+              tabActiva === id ? "text-green-600" : "text-gray-400 hover:text-gray-600"
             )}
           >
+            {tabActiva === id && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-green-600" />
+            )}
             <Icon className="w-5 h-5" strokeWidth={tabActiva === id ? 2.5 : 1.8} />
             <span className={cn("text-xs", tabActiva === id ? "font-semibold" : "font-normal")}>
               {label}

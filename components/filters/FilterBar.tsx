@@ -27,7 +27,7 @@ export function FilterBar({ filtros, onChange, soloFavoritas, onToggleSoloFavori
             className={cn(
               "flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
               filtros.combustible === key
-                ? "bg-gray-900 text-white"
+                ? "bg-green-600 text-white shadow-sm shadow-green-600/30"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             )}
           >
@@ -58,7 +58,7 @@ export function FilterBar({ filtros, onChange, soloFavoritas, onToggleSoloFavori
             className={cn(
               "flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
               filtros.radio === value
-                ? "bg-gray-900 text-white"
+                ? "bg-green-600 text-white shadow-sm shadow-green-600/30"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             )}
           >
