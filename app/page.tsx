@@ -1,7 +1,8 @@
 "use client";
 import { useState, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { Bell, X } from "lucide-react";
+import { Bell, HelpCircle, X } from "lucide-react";
+import { WelcomeModal, useOnboarding } from "@/components/onboarding/WelcomeModal";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { StationList } from "@/components/list/StationList";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -52,6 +53,7 @@ export default function HomePage() {
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
   const [soloFavoritas, setSoloFavoritas] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const { visible: onboardingVisible, cerrar: cerrarOnboarding, abrir: abrirOnboarding } = useOnboarding();
 
   const { vehiculos, vehiculoActivo, guardarVehiculo, eliminarVehiculo, seleccionarVehiculo, crearVehiculo, hidratado } = useVehiculo();
   const { todas, filtradas, cargando, error, ultimaActualizacion, refetch } = useGasolineras(coordenadas, filtros);
@@ -144,10 +146,19 @@ export default function HomePage() {
           <img src="/icons/icon-192.png" alt="Gasolisto" className="w-7 h-7 rounded-lg" />
           <h1 className="font-bold text-gray-900 text-base">Gasolisto</h1>
         </div>
-        {cargando && <Spinner className="w-4 h-4" />}
-        {!cargando && !error && (
-          <span className="text-xs text-gray-400">{gasolinerasMostradas.length} cerca</span>
-        )}
+        <div className="flex items-center gap-2">
+          {cargando && <Spinner className="w-4 h-4" />}
+          {!cargando && !error && (
+            <span className="text-xs text-gray-400">{gasolinerasMostradas.length} cerca</span>
+          )}
+          <button
+            onClick={abrirOnboarding}
+            aria-label="Qué puedes hacer en Gasolisto"
+            className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <HelpCircle className="w-4 h-4 text-gray-400" />
+          </button>
+        </div>
       </header>
 
       {/* Banner de alertas y resumen diario */}
@@ -308,6 +319,8 @@ export default function HomePage() {
         onChange={handleTabChange}
         aviso={errorGeo}
       />
+
+      {onboardingVisible && <WelcomeModal onCerrar={cerrarOnboarding} />}
     </div>
   );
 }
