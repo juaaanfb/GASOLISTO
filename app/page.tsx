@@ -206,10 +206,19 @@ export default function HomePage() {
           onSelect={handleSelect}
         />
 
-        {/* Indicador de fallback de ubicación */}
-        {esFallback && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-card text-xs text-amber-700 font-medium border border-amber-100">
-            Mostrando Madrid (sin acceso a tu ubicación)
+        {/* Avisos superiores: ubicación de respaldo y modo "sin límite" */}
+        {(esFallback || (tabActiva === "mapa" && filtros.radio === null)) && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 px-4 w-full">
+            {esFallback && (
+              <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-card text-xs text-amber-700 font-medium border border-amber-100 whitespace-nowrap">
+                Mostrando Madrid (sin acceso a tu ubicación)
+              </div>
+            )}
+            {tabActiva === "mapa" && filtros.radio === null && (
+              <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-card text-xs text-gray-600 font-medium border border-gray-200 text-center">
+                Mostrando las más cercanas · en Lista verás las más baratas de España
+              </div>
+            )}
           </div>
         )}
 

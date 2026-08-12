@@ -97,10 +97,16 @@ export function WelcomeModal({ onCerrar }: WelcomeModalProps) {
           ))}
         </div>
 
-        <div className="p-5 pt-4">
+        <div className="p-5 pt-4 space-y-3">
           <Button variante="primario" className="w-full" onClick={onCerrar}>
             Empezar a ahorrar
           </Button>
+          <a
+            href="/privacidad"
+            className="block text-center text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
+          >
+            Política de privacidad
+          </a>
         </div>
       </div>
     </div>
