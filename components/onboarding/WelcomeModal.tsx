@@ -101,12 +101,15 @@ export function WelcomeModal({ onCerrar }: WelcomeModalProps) {
           <Button variante="primario" className="w-full" onClick={onCerrar}>
             Empezar a ahorrar
           </Button>
-          <a
-            href="/privacidad"
-            className="block text-center text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
-          >
-            Política de privacidad
-          </a>
+          <div className="flex items-center justify-center gap-3 text-xs text-gray-400">
+            <a href="/como-funciona" className="hover:text-gray-600 underline underline-offset-2">
+              Cómo funciona
+            </a>
+            <span>·</span>
+            <a href="/privacidad" className="hover:text-gray-600 underline underline-offset-2">
+              Privacidad
+            </a>
+          </div>
         </div>
       </div>
     </div>
