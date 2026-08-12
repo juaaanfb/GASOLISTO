@@ -6,14 +6,17 @@ import { Badge } from "@/components/ui/Badge";
 import type { Gasolinera, Vehiculo, TipoCombustible } from "@/types";
 import { COMBUSTIBLES } from "@/types";
 import { calcularAhorro, calcularEstadisticas, clasificarPrecio, obtenerPrecio, formatPrecio, formatEuros } from "@/lib/calculos";
+import { precioConDescuento } from "@/lib/marcas";
 import { cn } from "@/lib/utils";
 import type { AlertaConfig } from "@/hooks/useAlertas";
+import type { Descuentos } from "@/hooks/useDescuentos";
 
 interface StationDetailProps {
   gasolinera: Gasolinera;
   combustibleActivo: TipoCombustible;
   gasolinerasRadio: Gasolinera[];
   vehiculo?: Vehiculo;
+  descuentos?: Descuentos;
   esFavorita: boolean;
   onToggleFavorita: () => void;
   alerta: AlertaConfig | null;
@@ -102,6 +105,7 @@ export function StationDetail({
   combustibleActivo,
   gasolinerasRadio,
   vehiculo,
+  descuentos,
   esFavorita,
   onToggleFavorita,
   alerta,
@@ -114,6 +118,8 @@ export function StationDetail({
   const stats = calcularEstadisticas(gasolinerasRadio, combustibleActivo);
   const ahorro = vehiculo ? calcularAhorro(gasolinera, vehiculo, stats) : null;
   const precioActivo = obtenerPrecio(gasolinera, combustibleActivo);
+  const precioDescontado =
+    precioActivo && descuentos ? precioConDescuento(precioActivo, gasolinera.nombre, descuentos) : null;
 
   const umbralInicial = alerta
     ? alerta.umbral.toFixed(3)
@@ -196,6 +202,16 @@ export function StationDetail({
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Precio con descuento de tarjeta/app */}
+        {precioDescontado !== null && (
+          <div className="mx-4 mb-3 p-3 rounded-2xl bg-green-50 flex items-center justify-between">
+            <p className="text-xs font-semibold text-green-700">Con tu descuento</p>
+            <p className="text-base font-bold text-green-700 tabular-nums">
+              {formatPrecio(precioDescontado)}
+            </p>
           </div>
         )}
 

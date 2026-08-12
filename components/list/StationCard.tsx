@@ -12,6 +12,8 @@ import {
   formatDistancia,
 } from "@/lib/calculos";
 import { cn } from "@/lib/utils";
+import { precioConDescuento } from "@/lib/marcas";
+import type { Descuentos } from "@/hooks/useDescuentos";
 
 interface StationCardProps {
   gasolinera: Gasolinera;
@@ -21,6 +23,7 @@ interface StationCardProps {
   posicion: number;
   seleccionada: boolean;
   esFavorita: boolean;
+  descuentos?: Descuentos;
   onClick: () => void;
   onToggleFavorita: (e: React.MouseEvent) => void;
 }
@@ -39,6 +42,7 @@ export function StationCard({
   posicion,
   seleccionada,
   esFavorita,
+  descuentos,
   onClick,
   onToggleFavorita,
 }: StationCardProps) {
@@ -47,6 +51,7 @@ export function StationCard({
 
   const clasificacion = clasificarPrecio(precio, stats);
   const ahorro = vehiculo ? calcularAhorro(gasolinera, vehiculo, stats) : null;
+  const conDescuento = descuentos ? precioConDescuento(precio, gasolinera.nombre, descuentos) : null;
 
   return (
     <div
@@ -105,6 +110,11 @@ export function StationCard({
             {precio.toFixed(3)}
           </p>
           <p className="text-xs text-gray-400">€/L</p>
+          {conDescuento !== null && (
+            <p className="text-xs font-semibold text-green-600 tabular-nums whitespace-nowrap">
+              {conDescuento.toFixed(3)} con desc.
+            </p>
+          )}
         </div>
       </div>
 

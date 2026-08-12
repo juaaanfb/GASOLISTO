@@ -1,8 +1,9 @@
 "use client";
 import { useState, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { Bell, HelpCircle, X } from "lucide-react";
+import { Bell, HelpCircle, Percent, X } from "lucide-react";
 import { WelcomeModal, useOnboarding } from "@/components/onboarding/WelcomeModal";
+import { DescuentosForm } from "@/components/discounts/DescuentosForm";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { StationList } from "@/components/list/StationList";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -17,6 +18,7 @@ import { useVehiculo } from "@/hooks/useVehiculo";
 import { useNavigation } from "@/hooks/useNavigation";
 import { useFavoritas } from "@/hooks/useFavoritas";
 import { useAlertas } from "@/hooks/useAlertas";
+import { useDescuentos } from "@/hooks/useDescuentos";
 import { obtenerPrecio } from "@/lib/calculos";
 import type { Filtros } from "@/types";
 
@@ -54,6 +56,8 @@ export default function HomePage() {
   const [soloFavoritas, setSoloFavoritas] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const { visible: onboardingVisible, cerrar: cerrarOnboarding, abrir: abrirOnboarding } = useOnboarding();
+  const { descuentos, guardar: guardarDescuentos } = useDescuentos();
+  const [descuentosVisible, setDescuentosVisible] = useState(false);
 
   const { vehiculos, vehiculoActivo, guardarVehiculo, eliminarVehiculo, seleccionarVehiculo, crearVehiculo, hidratado } = useVehiculo();
   const { todas, filtradas, cargando, error, ultimaActualizacion, refetch } = useGasolineras(coordenadas, filtros);
@@ -151,6 +155,13 @@ export default function HomePage() {
           {!cargando && !error && (
             <span className="text-xs text-gray-400">{gasolinerasMostradas.length} cerca</span>
           )}
+          <button
+            onClick={() => setDescuentosVisible(true)}
+            aria-label="Mis descuentos con tarjetas y apps"
+            className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <Percent className="w-4 h-4 text-gray-400" />
+          </button>
           <button
             onClick={abrirOnboarding}
             aria-label="Qué puedes hacer en Gasolisto"
@@ -273,6 +284,7 @@ export default function HomePage() {
               error={error}
               ultimaActualizacion={ultimaActualizacion}
               favoritas={favoritas}
+              descuentos={descuentos}
               onSelect={handleSelect}
               onToggleFavorita={toggleFavorita}
               onRefetch={refetch}
@@ -287,6 +299,7 @@ export default function HomePage() {
             combustibleActivo={filtros.combustible}
             gasolinerasRadio={filtradas}
             vehiculo={hidratado ? vehiculoActivo : undefined}
+            descuentos={descuentos}
             esFavorita={favoritas.has(gasolineraSeleccionada.id)}
             onToggleFavorita={() => toggleFavorita(gasolineraSeleccionada.id)}
             alerta={obtenerAlerta(gasolineraSeleccionada.id)}
@@ -330,6 +343,13 @@ export default function HomePage() {
       />
 
       {onboardingVisible && <WelcomeModal onCerrar={cerrarOnboarding} />}
+      {descuentosVisible && (
+        <DescuentosForm
+          descuentos={descuentos}
+          onGuardar={guardarDescuentos}
+          onCerrar={() => setDescuentosVisible(false)}
+        />
+      )}
     </div>
   );
 }

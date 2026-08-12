@@ -5,6 +5,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import type { Gasolinera, Filtros, Vehiculo } from "@/types";
 import { COMBUSTIBLES } from "@/types";
+import type { Descuentos } from "@/hooks/useDescuentos";
 
 interface StationListProps {
   gasolineras: Gasolinera[];
@@ -17,6 +18,7 @@ interface StationListProps {
   error: string | null;
   ultimaActualizacion: string | null;
   favoritas: Set<string>;
+  descuentos?: Descuentos;
   onSelect: (gasolinera: Gasolinera) => void;
   onToggleFavorita: (id: string) => void;
   onRefetch?: () => void;
@@ -33,6 +35,7 @@ export function StationList({
   error,
   ultimaActualizacion,
   favoritas,
+  descuentos,
   onSelect,
   onToggleFavorita,
   onRefetch,
@@ -111,6 +114,7 @@ export function StationList({
             posicion={i + 1}
             seleccionada={g.id === seleccionadaId}
             esFavorita={favoritas.has(g.id)}
+            descuentos={descuentos}
             onClick={() => onSelect(g)}
             onToggleFavorita={(e) => { e.stopPropagation(); onToggleFavorita(g.id); }}
           />
