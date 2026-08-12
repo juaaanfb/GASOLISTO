@@ -83,8 +83,15 @@ export default function HomePage() {
 
   // Versiones recortadas solo para renderizar (mapa y lista) — los cálculos
   // de estadísticas/comparativas siguen usando los arrays completos.
+  // El mapa se recorta por CERCANÍA (no por precio, a diferencia de la lista):
+  // con radio "sin límite", filtradas viene ordenada por precio nacional, y
+  // recortarla tal cual dejaba el mapa mostrando gasolineras baratas
+  // desperdigadas por España, sin relación con la zona que se está mirando.
   const gasolinerasMapa = useMemo(
-    () => filtradas.slice(0, LIMITE_RENDERIZADO),
+    () =>
+      [...filtradas]
+        .sort((a, b) => (a.distancia ?? Infinity) - (b.distancia ?? Infinity))
+        .slice(0, LIMITE_RENDERIZADO),
     [filtradas]
   );
   const gasolinerasLista = useMemo(
@@ -135,7 +142,7 @@ export default function HomePage() {
       <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between flex-shrink-0 z-10">
         <div className="flex items-center gap-2">
           <img src="/icons/icon-192.png" alt="Gasolisto" className="w-7 h-7 rounded-lg" />
-          <span className="font-bold text-gray-900 text-base">Gasolisto</span>
+          <h1 className="font-bold text-gray-900 text-base">Gasolisto</h1>
         </div>
         {cargando && <Spinner className="w-4 h-4" />}
         {!cargando && !error && (

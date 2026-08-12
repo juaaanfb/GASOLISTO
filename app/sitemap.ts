@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
 
+const SITE_URL = "https://gasolisto.vercel.app";
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
   return [
     {
-      url: siteUrl,
+      url: SITE_URL,
       lastModified: new Date(),
       changeFrequency: "always",
       priority: 1,

@@ -106,7 +106,7 @@ export function TripPlanner({
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-10">
-      <h1 className="text-xl font-bold text-gray-900">Planifica tu viaje</h1>
+      <h2 className="text-xl font-bold text-gray-900">Planifica tu viaje</h2>
 
       {/* Formulario */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
