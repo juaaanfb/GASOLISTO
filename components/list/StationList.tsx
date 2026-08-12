@@ -8,6 +8,7 @@ import { COMBUSTIBLES } from "@/types";
 
 interface StationListProps {
   gasolineras: Gasolinera[];
+  totalDisponible?: number;
   filtros: Filtros;
   stats: { media: number; maximo: number; minimo: number };
   vehiculo?: Vehiculo;
@@ -23,6 +24,7 @@ interface StationListProps {
 
 export function StationList({
   gasolineras,
+  totalDisponible,
   filtros,
   stats,
   vehiculo,
@@ -87,6 +89,14 @@ export function StationList({
           </span>
         )}
       </div>
+
+      {totalDisponible !== undefined && totalDisponible > gasolineras.length && (
+        <div className="px-4 py-2 bg-amber-50 border-b border-amber-100">
+          <p className="text-xs text-amber-700">
+            Mostrando las {gasolineras.length} más baratas de {totalDisponible.toLocaleString("es-ES")}. Reduce el radio para ver solo las de cerca.
+          </p>
+        </div>
+      )}
 
       {gasolineras.map((g, i) => (
         <div

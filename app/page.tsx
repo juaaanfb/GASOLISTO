@@ -41,6 +41,12 @@ const FILTROS_INICIALES: Filtros = {
   radio: 5,
 };
 
+// Con radio "sin límite" (o muchas favoritas) filtradas puede tener miles de
+// estaciones — renderizar un marker/card por cada una congela el móvil.
+// filtradas ya viene ordenada por precio ascendente, así que recortar aquí
+// sigue mostrando siempre las más baratas primero.
+const LIMITE_RENDERIZADO = 300;
+
 export default function HomePage() {
   const { coordenadas, error: errorGeo, esFallback } = useGeolocation();
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
@@ -73,6 +79,17 @@ export default function HomePage() {
   const gasolinerasMostradas = useMemo(
     () => soloFavoritas ? filtradas.filter((g) => favoritas.has(g.id)) : filtradas,
     [filtradas, favoritas, soloFavoritas]
+  );
+
+  // Versiones recortadas solo para renderizar (mapa y lista) — los cálculos
+  // de estadísticas/comparativas siguen usando los arrays completos.
+  const gasolinerasMapa = useMemo(
+    () => filtradas.slice(0, LIMITE_RENDERIZADO),
+    [filtradas]
+  );
+  const gasolinerasLista = useMemo(
+    () => gasolinerasMostradas.slice(0, LIMITE_RENDERIZADO),
+    [gasolinerasMostradas]
   );
 
   const gasolineraSeleccionada = filtradas.find((g) => g.id === seleccionadaId) ?? null;
@@ -162,7 +179,7 @@ export default function HomePage() {
       {/* Mapa — ocupa todo el espacio restante */}
       <div className="flex-1 relative overflow-hidden">
         <MapView
-          gasolineras={filtradas}
+          gasolineras={gasolinerasMapa}
           combustible={filtros.combustible}
           centro={coordenadas}
           seleccionadaId={seleccionadaId}
@@ -219,7 +236,8 @@ export default function HomePage() {
         {tabActiva === "lista" && pantalla === null && (
           <div className="h-full overflow-y-auto">
             <StationList
-              gasolineras={gasolinerasMostradas}
+              gasolineras={gasolinerasLista}
+              totalDisponible={gasolinerasMostradas.length}
               filtros={filtros}
               stats={stats}
               vehiculo={hidratado ? vehiculoActivo : undefined}
