@@ -6,6 +6,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 
 const GREEN = [22, 163, 74]; // #16a34a
 const WHITE = [255, 255, 255];
+const SS = 4; // supersampling factor for basic anti-aliasing
 
 function crc32Of(buf) {
   return crc32(buf) >>> 0;
@@ -49,34 +50,76 @@ function encodePng(width, height, rgba) {
   return Buffer.concat([sig, ihdr, idat, iend]);
 }
 
-function drawIcon(size) {
-  return drawCanvas(size, size, size / 2, size / 2, size * 0.33);
+// Point-in-triangle via sign of cross products (barycentric technique).
+function signo(p, a, b) {
+  return (p.x - b.x) * (a.y - b.y) - (a.x - b.x) * (p.y - b.y);
+}
+function enTriangulo(p, v1, v2, v3) {
+  const d1 = signo(p, v1, v2);
+  const d2 = signo(p, v2, v3);
+  const d3 = signo(p, v3, v1);
+  const neg = d1 < 0 || d2 < 0 || d3 < 0;
+  const pos = d1 > 0 || d2 > 0 || d3 > 0;
+  return !(neg && pos);
 }
 
-// Generic canvas: green fill, white ring centered at (cx, cy) with given outer radius.
-function drawCanvas(width, height, cx, cy, outerR) {
-  const innerR = outerR * 0.7;
-  const rgba = Buffer.alloc(width * height * 4);
+// "Fuel drop" shape: a circle (body) unioned with a triangle (tapered point),
+// the classic teardrop/pin silhouette — reads clearly at any size, no fonts needed.
+function enGota(x, y, cx, cyTop, r) {
+  const dx = x - cx;
+  const dy = y - cyTop;
+  if (Math.sqrt(dx * dx + dy * dy) <= r) return true;
 
+  const v1 = { x: cx - r * 0.87, y: cyTop + r * 0.5 };
+  const v2 = { x: cx + r * 0.87, y: cyTop + r * 0.5 };
+  const v3 = { x: cx, y: cyTop + r * 2.05 };
+  return enTriangulo({ x, y }, v1, v2, v3);
+}
+
+// Renders at SS× resolution then box-downsamples for basic anti-aliasing.
+function drawSupersampled(width, height, maskFn) {
+  const bigW = width * SS;
+  const bigH = height * SS;
+  const big = new Uint8Array(bigW * bigH);
+
+  for (let y = 0; y < bigH; y++) {
+    for (let x = 0; x < bigW; x++) {
+      big[y * bigW + x] = maskFn(x, y) ? 1 : 0;
+    }
+  }
+
+  const rgba = Buffer.alloc(width * height * 4);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const dx = x - cx;
-      const dy = y - cy;
-      const r = Math.sqrt(dx * dx + dy * dy);
-
-      let color = GREEN;
-      if (r <= outerR && r >= innerR) {
-        color = WHITE;
+      let sum = 0;
+      for (let sy = 0; sy < SS; sy++) {
+        for (let sx = 0; sx < SS; sx++) {
+          sum += big[(y * SS + sy) * bigW + (x * SS + sx)];
+        }
       }
-
+      const t = sum / (SS * SS); // 0 = green background, 1 = white shape
       const i = (y * width + x) * 4;
-      rgba[i] = color[0];
-      rgba[i + 1] = color[1];
-      rgba[i + 2] = color[2];
+      rgba[i] = GREEN[0] + (WHITE[0] - GREEN[0]) * t;
+      rgba[i + 1] = GREEN[1] + (WHITE[1] - GREEN[1]) * t;
+      rgba[i + 2] = GREEN[2] + (WHITE[2] - GREEN[2]) * t;
       rgba[i + 3] = 255;
     }
   }
   return rgba;
+}
+
+function drawIcon(size) {
+  const cx = size / 2;
+  const r = size * 0.235;
+  const cyTop = size / 2 - r * 0.78;
+  return drawSupersampled(size, size, (x, y) => enGota(x / SS, y / SS, cx, cyTop, r));
+}
+
+function drawOgImage(width, height) {
+  const cx = width / 2;
+  const r = height * 0.22;
+  const cyTop = height / 2 - r * 1.0;
+  return drawSupersampled(width, height, (x, y) => enGota(x / SS, y / SS, cx, cyTop, r));
 }
 
 async function main() {
@@ -98,7 +141,7 @@ async function main() {
 
   const ogW = 1200;
   const ogH = 630;
-  const ogRgba = drawCanvas(ogW, ogH, ogW / 2, ogH / 2, 140);
+  const ogRgba = drawOgImage(ogW, ogH);
   const ogPng = encodePng(ogW, ogH, ogRgba);
   await writeFile("public/icons/og-image.png", ogPng);
   console.log(`wrote public/icons/og-image.png (${ogPng.length} bytes)`);

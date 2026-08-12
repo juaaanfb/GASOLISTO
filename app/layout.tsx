@@ -1,7 +1,14 @@
 import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { PwaRegister } from "@/components/PwaRegister";
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 // Dominio real y estable del proyecto en Vercel. Deliberadamente NO se usa
 // process.env.VERCEL_URL: esa variable apunta a la URL de cada despliegue
@@ -88,7 +95,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" className={jakarta.variable}>
       <head>
         <script
           type="application/ld+json"
