@@ -20,6 +20,7 @@ import { useFavoritas } from "@/hooks/useFavoritas";
 import { useAlertas } from "@/hooks/useAlertas";
 import { useDescuentos } from "@/hooks/useDescuentos";
 import { obtenerPrecio } from "@/lib/calculos";
+import { normalizarTexto } from "@/lib/utils";
 import type { Filtros } from "@/types";
 
 const MapView = dynamic(
@@ -54,6 +55,7 @@ export default function HomePage() {
   const { coordenadas, error: errorGeo, esFallback } = useGeolocation();
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
   const [soloFavoritas, setSoloFavoritas] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const { visible: onboardingVisible, cerrar: cerrarOnboarding, abrir: abrirOnboarding } = useOnboarding();
   const { descuentos, guardar: guardarDescuentos } = useDescuentos();
@@ -100,9 +102,21 @@ export default function HomePage() {
         .slice(0, LIMITE_RENDERIZADO),
     [filtradas]
   );
+  // Búsqueda por nombre/localidad/dirección — solo afecta a la lista, no al
+  // mapa, para no sorprender ocultando gasolineras cercanas mientras se busca.
+  const gasolinerasBuscadas = useMemo(() => {
+    const q = normalizarTexto(busqueda.trim());
+    if (!q) return gasolinerasMostradas;
+    return gasolinerasMostradas.filter(
+      (g) =>
+        normalizarTexto(g.nombre).includes(q) ||
+        normalizarTexto(g.localidad).includes(q) ||
+        normalizarTexto(g.direccion).includes(q)
+    );
+  }, [gasolinerasMostradas, busqueda]);
   const gasolinerasLista = useMemo(
-    () => gasolinerasMostradas.slice(0, LIMITE_RENDERIZADO),
-    [gasolinerasMostradas]
+    () => gasolinerasBuscadas.slice(0, LIMITE_RENDERIZADO),
+    [gasolinerasBuscadas]
   );
 
   const gasolineraSeleccionada = filtradas.find((g) => g.id === seleccionadaId) ?? null;
@@ -275,7 +289,7 @@ export default function HomePage() {
           <div className="h-full overflow-y-auto">
             <StationList
               gasolineras={gasolinerasLista}
-              totalDisponible={gasolinerasMostradas.length}
+              totalDisponible={gasolinerasBuscadas.length}
               filtros={filtros}
               stats={stats}
               vehiculo={hidratado ? vehiculoActivo : undefined}
@@ -285,6 +299,8 @@ export default function HomePage() {
               ultimaActualizacion={ultimaActualizacion}
               favoritas={favoritas}
               descuentos={descuentos}
+              busqueda={busqueda}
+              onBusquedaChange={setBusqueda}
               onSelect={handleSelect}
               onToggleFavorita={toggleFavorita}
               onRefetch={refetch}

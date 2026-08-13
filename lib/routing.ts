@@ -1,17 +1,9 @@
 import type { Coordenadas, Gasolinera, Vehiculo, TipoCombustible } from "@/types";
 import type { PlanViaje, ParadaRepostaje } from "@/types/trip";
 import { calcularDistancia, calcularEstadisticas, obtenerPrecio } from "@/lib/calculos";
+import { geocodificarDireccion } from "@/lib/geocoding";
 
-export async function geocodificarDireccion(texto: string): Promise<Coordenadas> {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(texto)}&format=json&limit=1&countrycodes=es`;
-  const res = await fetch(url, {
-    headers: { "Accept-Language": "es", "User-Agent": "Gasolisto/1.0" },
-  });
-  if (!res.ok) throw new Error("NOMINATIM_ERROR");
-  const datos = await res.json();
-  if (!datos.length) throw new Error("NO_ENCONTRADO");
-  return { lat: parseFloat(datos[0].lat), lng: parseFloat(datos[0].lon) };
-}
+export { geocodificarDireccion };
 
 async function obtenerRutaOSRM(
   origen: Coordenadas,
@@ -71,12 +63,12 @@ function mejorGasolineraEnPunto(
 
 export async function planificarViaje(
   origen: Coordenadas,
+  destinoCoordenadas: Coordenadas,
   destinoTexto: string,
   todasGasolineras: Gasolinera[],
   vehiculo: Vehiculo,
   combustible: TipoCombustible
 ): Promise<PlanViaje> {
-  const destinoCoordenadas = await geocodificarDireccion(destinoTexto);
   const { distanciaKm, coordenadas } = await obtenerRutaOSRM(origen, destinoCoordenadas);
 
   if (distanciaKm < 50) throw new Error("RUTA_CORTA");

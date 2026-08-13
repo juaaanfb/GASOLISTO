@@ -2,48 +2,33 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface Sugerencia {
-  displayName: string;
-}
-
-async function buscarSugerencias(texto: string): Promise<Sugerencia[]> {
-  if (texto.length < 2) return [];
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(texto)}&format=json&limit=3&countrycodes=es&addressdetails=0`;
-    const res = await fetch(url, {
-      headers: { "Accept-Language": "es", "User-Agent": "Gasolisto/1.0" },
-    });
-    if (!res.ok) return [];
-    const datos = await res.json();
-    return (datos as Array<{ display_name: string }>).map((d) => ({
-      displayName: d.display_name.split(",").slice(0, 3).join(", ").trim(),
-    }));
-  } catch {
-    return [];
-  }
-}
+import { buscarLugares, type LugarSugerido } from "@/lib/geocoding";
+import type { Coordenadas } from "@/types";
 
 interface AutocompleteInputProps {
   value: string;
   onChange: (v: string) => void;
+  onSeleccionar?: (lugar: LugarSugerido) => void;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   placeholder: string;
   icon: React.ReactNode;
   action?: { label: string; onClick: () => void };
+  bias?: Coordenadas;
   className?: string;
 }
 
 export function AutocompleteInput({
   value,
   onChange,
+  onSeleccionar,
   onKeyDown,
   placeholder,
   icon,
   action,
+  bias,
   className,
 }: AutocompleteInputProps) {
-  const [sugerencias, setSugerencias] = useState<Sugerencia[]>([]);
+  const [sugerencias, setSugerencias] = useState<LugarSugerido[]>([]);
   const [abierto, setAbierto] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contenedorRef = useRef<HTMLDivElement>(null);
@@ -56,11 +41,11 @@ export function AutocompleteInput({
       return;
     }
     timerRef.current = setTimeout(async () => {
-      const resultados = await buscarSugerencias(texto);
+      const resultados = await buscarLugares(texto, { bias }).catch(() => []);
       setSugerencias(resultados);
       setAbierto(resultados.length > 0);
     }, 350);
-  }, []);
+  }, [bias]);
 
   useEffect(() => {
     buscar(value);
@@ -77,8 +62,9 @@ export function AutocompleteInput({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const seleccionar = (s: Sugerencia) => {
-    onChange(s.displayName);
+  const seleccionar = (s: LugarSugerido) => {
+    onChange(s.label);
+    onSeleccionar?.(s);
     setSugerencias([]);
     setAbierto(false);
   };
@@ -130,7 +116,7 @@ export function AutocompleteInput({
               onClick={() => seleccionar(s)}
               className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-50 last:border-0 truncate"
             >
-              {s.displayName}
+              {s.label}
             </button>
           ))}
         </div>

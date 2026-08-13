@@ -21,27 +21,33 @@ interface Errores {
 }
 
 export function VehicleForm({ vehiculo, esNuevo = false, onGuardar, onEliminar, onCancelar }: VehicleFormProps) {
-  const [form, setForm] = useState<Vehiculo>(vehiculo);
+  const [nombre, setNombre] = useState(vehiculo.nombre);
+  const [combustible, setCombustible] = useState<TipoCombustible>(vehiculo.combustible);
+  // Consumo y depósito se editan como texto libre (no como number ligado al
+  // valor numérico ya validado): así se puede borrar el campo del todo sin
+  // que un "0" intermedio se cuele y quede delante de lo siguiente que se
+  // escriba. Solo se convierten a número al guardar.
+  const [consumoTexto, setConsumoTexto] = useState(String(vehiculo.consumo));
+  const [depositoTexto, setDepositoTexto] = useState(String(vehiculo.deposito));
   const [errores, setErrores] = useState<Errores>({});
 
-  const set = <K extends keyof Vehiculo>(k: K, v: Vehiculo[K]) => {
-    setForm((f) => ({ ...f, [k]: v }));
-    // Limpiar el error del campo al modificarlo
-    setErrores((e) => ({ ...e, [k]: undefined }));
-  };
+  const limpiarError = (k: keyof Errores) => setErrores((e) => ({ ...e, [k]: undefined }));
 
-  const validar = (): boolean => {
+  const validar = (): { consumo: number; deposito: number } | null => {
+    const consumo = parseFloat(consumoTexto.replace(",", ".")) || 0;
+    const deposito = parseFloat(depositoTexto.replace(",", ".")) || 0;
     const nuevos: Errores = {};
-    if (!form.nombre.trim()) nuevos.nombre = "El nombre no puede estar vacío";
-    if (form.consumo <= 0) nuevos.consumo = "El consumo debe ser mayor que 0";
-    if (form.deposito <= 0) nuevos.deposito = "La capacidad debe ser mayor que 0";
+    if (!nombre.trim()) nuevos.nombre = "El nombre no puede estar vacío";
+    if (consumo <= 0) nuevos.consumo = "El consumo debe ser mayor que 0";
+    if (deposito <= 0) nuevos.deposito = "La capacidad debe ser mayor que 0";
     setErrores(nuevos);
-    return Object.keys(nuevos).length === 0;
+    return Object.keys(nuevos).length === 0 ? { consumo, deposito } : null;
   };
 
   const handleGuardar = () => {
-    if (!validar()) return;
-    onGuardar(form);
+    const valores = validar();
+    if (!valores) return;
+    onGuardar({ ...vehiculo, nombre, combustible, ...valores });
   };
 
   return (
@@ -58,8 +64,8 @@ export function VehicleForm({ vehiculo, esNuevo = false, onGuardar, onEliminar, 
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nombre</label>
           <input
             type="text"
-            value={form.nombre}
-            onChange={(e) => set("nombre", e.target.value)}
+            value={nombre}
+            onChange={(e) => { setNombre(e.target.value); limpiarError("nombre"); }}
             placeholder="Mi Seat Ibiza"
             className={cn(
               "w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20",
@@ -76,10 +82,10 @@ export function VehicleForm({ vehiculo, esNuevo = false, onGuardar, onEliminar, 
             {(Object.keys(COMBUSTIBLES) as TipoCombustible[]).map((tipo) => (
               <button
                 key={tipo}
-                onClick={() => set("combustible", tipo)}
+                onClick={() => setCombustible(tipo)}
                 className={cn(
                   "px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors text-left",
-                  form.combustible === tipo
+                  combustible === tipo
                     ? "bg-green-600 text-white border-green-600"
                     : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
                 )}
@@ -97,8 +103,8 @@ export function VehicleForm({ vehiculo, esNuevo = false, onGuardar, onEliminar, 
           </label>
           <input
             type="number"
-            value={form.consumo}
-            onChange={(e) => set("consumo", parseFloat(e.target.value) || 0)}
+            value={consumoTexto}
+            onChange={(e) => { setConsumoTexto(e.target.value); limpiarError("consumo"); }}
             min={1}
             max={30}
             step={0.1}
@@ -120,8 +126,8 @@ export function VehicleForm({ vehiculo, esNuevo = false, onGuardar, onEliminar, 
           </label>
           <input
             type="number"
-            value={form.deposito}
-            onChange={(e) => set("deposito", parseFloat(e.target.value) || 0)}
+            value={depositoTexto}
+            onChange={(e) => { setDepositoTexto(e.target.value); limpiarError("deposito"); }}
             min={10}
             max={150}
             step={1}

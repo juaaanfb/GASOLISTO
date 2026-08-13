@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useEffect } from "react";
+import { Search, X } from "lucide-react";
 import { StationCard } from "./StationCard";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
@@ -19,6 +20,8 @@ interface StationListProps {
   ultimaActualizacion: string | null;
   favoritas: Set<string>;
   descuentos?: Descuentos;
+  busqueda: string;
+  onBusquedaChange: (v: string) => void;
   onSelect: (gasolinera: Gasolinera) => void;
   onToggleFavorita: (id: string) => void;
   onRefetch?: () => void;
@@ -36,6 +39,8 @@ export function StationList({
   ultimaActualizacion,
   favoritas,
   descuentos,
+  busqueda,
+  onBusquedaChange,
   onSelect,
   onToggleFavorita,
   onRefetch,
@@ -46,42 +51,81 @@ export function StationList({
     refSeleccionada.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [seleccionadaId]);
 
+  const buscador = (
+    <div className="px-4 py-2.5 border-b border-gray-100 bg-white">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          inputMode="search"
+          value={busqueda}
+          onChange={(e) => onBusquedaChange(e.target.value)}
+          placeholder="Buscar por nombre o localidad…"
+          className="w-full pl-9 pr-8 py-2.5 bg-gray-50 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
+        />
+        {busqueda && (
+          <button
+            type="button"
+            onClick={() => onBusquedaChange("")}
+            aria-label="Borrar búsqueda"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   if (cargando) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <Spinner className="w-8 h-8" />
-        <p className="text-sm text-gray-400">Cargando gasolineras de España…</p>
+      <div className="flex flex-col">
+        {buscador}
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <Spinner className="w-8 h-8" />
+          <p className="text-sm text-gray-400">Cargando gasolineras de España…</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-3 px-8 text-center">
-        <p className="text-sm font-medium text-gray-700">Error al cargar datos</p>
-        <p className="text-xs text-gray-400">{error}</p>
-        {onRefetch && (
-          <Button variante="secundario" tamano="sm" onClick={onRefetch}>
-            Reintentar
-          </Button>
-        )}
+      <div className="flex flex-col">
+        {buscador}
+        <div className="flex flex-col items-center justify-center py-16 gap-3 px-8 text-center">
+          <p className="text-sm font-medium text-gray-700">Error al cargar datos</p>
+          <p className="text-xs text-gray-400">{error}</p>
+          {onRefetch && (
+            <Button variante="secundario" tamano="sm" onClick={onRefetch}>
+              Reintentar
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
 
   if (gasolineras.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-2 px-8 text-center">
-        <p className="text-sm font-medium text-gray-700">Sin resultados</p>
-        <p className="text-xs text-gray-400">
-          No hay gasolineras con precio de {COMBUSTIBLES[filtros.combustible].label} en el radio seleccionado.
-        </p>
+      <div className="flex flex-col">
+        {buscador}
+        <div className="flex flex-col items-center justify-center py-16 gap-2 px-8 text-center">
+          <p className="text-sm font-medium text-gray-700">Sin resultados</p>
+          <p className="text-xs text-gray-400">
+            {busqueda.trim()
+              ? `No hay gasolineras que coincidan con "${busqueda.trim()}".`
+              : `No hay gasolineras con precio de ${COMBUSTIBLES[filtros.combustible].label} en el radio seleccionado.`}
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col">
+      {buscador}
+
       <div className="px-4 py-2.5 flex items-center justify-between border-b border-gray-100 bg-gray-50">
         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           {gasolineras.length} gasolineras

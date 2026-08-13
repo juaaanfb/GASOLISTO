@@ -8,6 +8,7 @@ import { planificarViaje, geocodificarDireccion } from "@/lib/routing";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { AutocompleteInput } from "@/components/trip/AutocompleteInput";
+import type { LugarSugerido } from "@/lib/geocoding";
 
 function urlGoogleMaps(plan: PlanViaje): string {
   const coord = (c: Coordenadas) => `${c.lat},${c.lng}`;
@@ -47,7 +48,7 @@ const ERRORES: Record<string, string> = {
   ORIGEN_NO_ENCONTRADO: "No se encontró el origen. Prueba con otra dirección.",
   SIN_GASOLINERAS: "No hay gasolineras con ese combustible en la ruta.",
   RUTA_NO_ENCONTRADA: "No se pudo calcular la ruta. Verifica el destino.",
-  NOMINATIM_ERROR: "Error al buscar la dirección. Inténtalo de nuevo.",
+  GEOCODING_ERROR: "Error al buscar la dirección. Inténtalo de nuevo.",
   OSRM_ERROR: "Error al calcular la ruta. Inténtalo de nuevo.",
 };
 
@@ -68,11 +69,17 @@ export function TripPlanner({
 }: TripPlannerProps) {
   const [origenTexto, setOrigenTexto] = useState("");
   const [destinoTexto, setDestinoTexto] = useState("");
+  const [destinoCoords, setDestinoCoords] = useState<Coordenadas | null>(null);
   const [plan, setPlan] = useState<PlanViaje | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const usarMiUbicacion = useCallback(() => setOrigenTexto(""), []);
+
+  const cambiarDestinoTexto = useCallback((v: string) => {
+    setDestinoTexto(v);
+    setDestinoCoords(null);
+  }, []);
 
   const calcular = useCallback(async () => {
     if (!destinoTexto.trim() || !vehiculo) return;
@@ -88,8 +95,13 @@ export function TripPlanner({
           throw new Error("ORIGEN_NO_ENCONTRADO");
         }
       }
+      // Si el destino viene de una sugerencia elegida ya tenemos sus
+      // coordenadas exactas; si el usuario escribió y pulsó Enter sin
+      // elegir ninguna, geocodificamos el texto tal cual.
+      const destino = destinoCoords ?? (await geocodificarDireccion(destinoTexto.trim()));
       const resultado = await planificarViaje(
         origen,
+        destino,
         destinoTexto.trim(),
         todasGasolineras,
         vehiculo,
@@ -102,7 +114,7 @@ export function TripPlanner({
     } finally {
       setCargando(false);
     }
-  }, [origenTexto, destinoTexto, vehiculo, coordenadas, todasGasolineras, combustible]);
+  }, [origenTexto, destinoTexto, destinoCoords, vehiculo, coordenadas, todasGasolineras, combustible]);
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-10">
@@ -117,6 +129,7 @@ export function TripPlanner({
           placeholder="Tu ubicación actual"
           icon={<LocateFixed className="w-4 h-4" />}
           action={origenTexto ? { label: "Mi ubicación", onClick: usarMiUbicacion } : undefined}
+          bias={coordenadas}
         />
 
         {/* Separador visual */}
@@ -129,10 +142,12 @@ export function TripPlanner({
         {/* Destino */}
         <AutocompleteInput
           value={destinoTexto}
-          onChange={setDestinoTexto}
+          onChange={cambiarDestinoTexto}
+          onSeleccionar={(lugar: LugarSugerido) => setDestinoCoords({ lat: lugar.lat, lng: lugar.lng })}
           onKeyDown={(e) => e.key === "Enter" && calcular()}
           placeholder="¿A dónde vas?"
           icon={<MapPin className="w-4 h-4" />}
+          bias={coordenadas}
         />
 
         {/* Vehículo */}

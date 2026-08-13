@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Map, Star, Bell, Car, Route, X } from "lucide-react";
+import { Map, Star, Bell, Car, Percent, Route, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 const KEY = "gasolisto_onboarding_visto";
@@ -25,6 +25,11 @@ const FUNCIONES = [
     Icon: Car,
     titulo: "Tu vehículo",
     texto: "Calculamos el ahorro real según el consumo y depósito de tu coche.",
+  },
+  {
+    Icon: Percent,
+    titulo: "Tus descuentos de fidelidad",
+    texto: "Añade lo que te descuentan Waylet, Gow u otras apps (icono % arriba) y compara el precio real en cada gasolinera.",
   },
   {
     Icon: Route,
