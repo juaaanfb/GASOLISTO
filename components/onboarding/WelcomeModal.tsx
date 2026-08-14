@@ -8,33 +8,33 @@ const KEY = "gasolisto_onboarding_visto";
 const FUNCIONES = [
   {
     Icon: Map,
-    titulo: "Mapa y lista de precios",
-    texto: "Precios reales de gasolineras cerca de ti, actualizados al momento.",
+    titulo: "Precios oficiales cerca de ti",
+    texto: "Consulta gasolina, diésel y GLP con datos públicos del MITECO.",
   },
   {
     Icon: Star,
     titulo: "Favoritas",
-    texto: "Guarda tus gasolineras de confianza para verlas siempre primero.",
+    texto: "Guarda tus estaciones de confianza y compáralas más rápido.",
   },
   {
     Icon: Bell,
     titulo: "Alertas de precio",
-    texto: "Te avisamos en cuanto una gasolinera baje del precio que tú marques.",
+    texto: "Marca un precio objetivo y te avisamos cuando una estación baje.",
   },
   {
     Icon: Car,
-    titulo: "Tu vehículo",
-    texto: "Calculamos el ahorro real según el consumo y depósito de tu coche.",
+    titulo: "Ahorro real",
+    texto: "Calcula euros por depósito según tu coche, consumo y distancia.",
   },
   {
     Icon: Percent,
-    titulo: "Tus descuentos de fidelidad",
-    texto: "Añade lo que te descuentan Waylet, Gow u otras apps (icono % arriba) y compara el precio real en cada gasolinera.",
+    titulo: "Tus descuentos",
+    texto: "Añade Waylet, Gow u otras tarjetas para ver tu precio final.",
   },
   {
     Icon: Route,
     titulo: "Planifica tu viaje",
-    texto: "Encuentra dónde repostar más barato en trayectos largos.",
+    texto: "Encuentra paradas baratas en trayectos largos antes de salir.",
   },
 ];
 
@@ -76,7 +76,7 @@ export function WelcomeModal({ onCerrar }: WelcomeModalProps) {
               <h2 className="font-bold text-gray-900 text-base leading-tight">
                 Bienvenido a Gasolisto
               </h2>
-              <p className="text-xs text-gray-400">Gratis, sin registro</p>
+              <p className="text-xs text-gray-400">Ahorra al repostar, sin registro</p>
             </div>
           </div>
           <button
@@ -104,7 +104,7 @@ export function WelcomeModal({ onCerrar }: WelcomeModalProps) {
 
         <div className="p-5 pt-4 space-y-3">
           <Button variante="primario" className="w-full" onClick={onCerrar}>
-            Empezar a ahorrar
+            Ver gasolineras cercanas
           </Button>
           <div className="flex items-center justify-center gap-3 text-xs text-gray-400">
             <a href="/como-funciona" className="hover:text-gray-600 underline underline-offset-2">
