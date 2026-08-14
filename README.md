@@ -23,7 +23,7 @@ npm start
 - Next.js 14 (App Router) + TypeScript
 - Tailwind CSS
 - Leaflet / OpenStreetMap (mapa)
-- OSRM (rutas) + Nominatim (geocodificación)
+- OSRM (rutas) + Photon/OpenStreetMap (geocodificación)
 - API pública del MITECO (precios de carburantes)
 - PWA instalable (manifest + service worker en `public/sw.js`)
 - Sin backend: favoritas, alertas y vehículos se guardan en `localStorage`
