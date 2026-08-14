@@ -82,6 +82,16 @@ export async function obtenerTodasEstaciones(): Promise<Gasolinera[]> {
       cache = { datos, timestamp: Date.now() };
       return datos;
     })
+    .catch((error) => {
+      // El servidor del MITECO falla o va lento de forma puntual (visto en
+      // producción: timeouts de conexión reales). Sin esto, un fallo aquí
+      // tumbaba /api/gasolineras entero y el mapa se quedaba vacío y sin
+      // ningún aviso hasta que el usuario recargaba la página. Si hay algo
+      // en caché, aunque esté caducado, es mejor servir precios un poco
+      // desactualizados que dejar la app sin datos.
+      if (cache) return cache.datos;
+      throw error;
+    })
     .finally(() => {
       peticionEnVuelo = null;
     });

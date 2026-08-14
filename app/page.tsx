@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { Bell, HelpCircle, Percent, X } from "lucide-react";
+import { AlertCircle, Bell, HelpCircle, Percent, X } from "lucide-react";
 import { WelcomeModal, useOnboarding } from "@/components/onboarding/WelcomeModal";
 import { DescuentosForm } from "@/components/discounts/DescuentosForm";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -251,6 +251,24 @@ export default function HomePage() {
                 Mostrando las más cercanas · en Lista verás las más baratas de España
               </div>
             )}
+          </div>
+        )}
+
+        {/* Error al cargar precios: antes esto dejaba el mapa vacío y sin
+            ningún aviso, indistinguible de "se ha quedado pillado", hasta
+            que el usuario recargaba la página a mano. */}
+        {error && tabActiva === "mapa" && pantalla === null && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 px-4 w-full" style={{ zIndex: 500 }}>
+            <div className="bg-white rounded-2xl shadow-card-hover border border-red-100 px-4 py-3 flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <p className="text-xs text-gray-600 flex-1">{error}</p>
+              <button
+                onClick={refetch}
+                className="text-xs font-semibold text-green-600 hover:text-green-700 flex-shrink-0"
+              >
+                Reintentar
+              </button>
+            </div>
           </div>
         )}
 
