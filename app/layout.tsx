@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { PwaRegister } from "@/components/PwaRegister";
+import { SITE_URL } from "@/lib/site";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -10,14 +11,9 @@ const jakarta = Plus_Jakarta_Sans({
   display: "swap",
 });
 
-// Dominio real y estable del proyecto en Vercel. Deliberadamente NO se usa
-// process.env.VERCEL_URL: esa variable apunta a la URL de cada despliegue
-// individual (gasolisto-xxxxx.vercel.app), no al dominio público fijo, lo
-// que rompía las URLs canónicas y las tarjetas de OG/Twitter.
-const SITE_URL = "https://gasolisto.vercel.app";
 const TITULO = "Gasolisto — Precios de gasolina y diésel baratos cerca de ti";
 const DESCRIPCION =
-  "Encuentra la gasolinera más barata cerca de ti. Precios reales y actualizados de gasolina 95, 98, diésel y GLP en toda España, con calculadora de ahorro y planificador de viajes.";
+  "Encuentra la gasolinera más barata cerca de ti. Precios reales de gasolina 95, 98, diésel y GLP en España, con calculadora de ahorro y planificador de viajes.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

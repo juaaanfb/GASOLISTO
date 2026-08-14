@@ -5,6 +5,9 @@ import { ArrowLeft } from "lucide-react";
 export const metadata: Metadata = {
   title: "Privacidad — Gasolisto",
   description: "Qué datos usa Gasolisto y qué hacemos (y qué no hacemos) con ellos.",
+  // Sin esto, esta página heredaba el canonical "/" del layout raíz y se
+  // autodeclaraba duplicado de la home.
+  alternates: { canonical: "/privacidad" },
 };
 
 export default function PrivacidadPage() {
@@ -74,7 +77,7 @@ export default function PrivacidadPage() {
               <li>Ministerio para la Transición Ecológica (MITECO) — precios de carburantes.</li>
               <li>OpenStreetMap / Leaflet — el mapa.</li>
               <li>OSRM — cálculo de rutas.</li>
-              <li>Nominatim (OpenStreetMap) — búsqueda de direcciones al planificar un viaje.</li>
+              <li>Photon (OpenStreetMap) — búsqueda de direcciones al planificar un viaje.</li>
             </ul>
           </section>
 

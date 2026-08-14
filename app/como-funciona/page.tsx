@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "Cómo funciona Gasolisto — Comparador de gasolina barata",
   description:
     "Cómo encuentra Gasolisto la gasolinera más barata cerca de ti, de dónde salen los precios, y cómo calcula cuánto puedes ahorrar en cada repostaje.",
+  // Sin esto, esta página heredaba el canonical "/" del layout raíz y se
+  // autodeclaraba duplicado de la home.
+  alternates: { canonical: "/como-funciona" },
 };
 
 const PREGUNTAS = [

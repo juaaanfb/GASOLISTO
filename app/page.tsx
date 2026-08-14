@@ -161,8 +161,15 @@ export default function HomePage() {
       {/* Barra de título */}
       <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between flex-shrink-0 z-10">
         <div className="flex items-center gap-2">
-          <img src="/icons/icon-192.png" alt="Gasolisto" className="w-7 h-7 rounded-lg" />
-          <h1 className="font-bold text-gray-900 text-base">Gasolisto</h1>
+          <img src="/icons/icon-192.png" alt="" className="w-7 h-7 rounded-lg" />
+          {/* Visualmente solo se ve "Gasolisto" (la barra de título debe caber
+              en móvil), pero el nombre accesible/indexable del h1 es
+              descriptivo — sin esto, el título de página con más peso SEO
+              de toda la app era literalmente solo el nombre de marca. */}
+          <h1 className="font-bold text-gray-900 text-base">
+            Gasolisto
+            <span className="sr-only"> — Precios de gasolina y diésel baratos cerca de ti</span>
+          </h1>
         </div>
         <div className="flex items-center gap-2">
           {cargando && <Spinner className="w-4 h-4" />}
