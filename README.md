@@ -28,6 +28,20 @@ npm start
 - PWA instalable (manifest + service worker en `public/sw.js`)
 - Sin backend: favoritas, alertas y vehículos se guardan en `localStorage`
 
+## Sistema de trabajo
+
+Este proyecto se trabaja con un flujo "Codex como cerebro, Claude Code como motor":
+
+- La carpeta local `GASOLISTO` es el código vivo.
+- Notion funciona como memoria de producto, decisiones y documentación técnica.
+- Claude Code implementa cambios concretos a partir de prompts cerrados.
+- Codex prepara los prompts, revisa los cambios y actualiza Notion al cerrar tareas.
+
+Documentos operativos:
+
+- `docs/working-system.md`
+- `docs/claude-code-prompt-template.md`
+
 ## Desplegar en Vercel (gratis)
 
 1. Crear cuenta gratuita en https://vercel.com (puede ser con GitHub).
