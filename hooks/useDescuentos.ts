@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import type { MarcaDescuento } from "@/lib/marcas";
+import type { Marca } from "@/lib/marcas";
 
 const KEY = "gasolisto_descuentos";
 
-export type Descuentos = Partial<Record<MarcaDescuento, number>>;
+export type Descuentos = Partial<Record<Marca, number>>;
 
 export function useDescuentos() {
   const [descuentos, setDescuentos] = useState<Descuentos>({});

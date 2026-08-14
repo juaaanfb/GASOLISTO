@@ -2,7 +2,7 @@ import type { Coordenadas, Gasolinera, Vehiculo, TipoCombustible } from "@/types
 import type { PlanViaje, ParadaRepostaje } from "@/types/trip";
 import { calcularDistancia, calcularEstadisticas, obtenerPrecio } from "@/lib/calculos";
 import { geocodificarDireccion } from "@/lib/geocoding";
-import { detectarMarca, type MarcaDescuento } from "@/lib/marcas";
+import { detectarMarca, type Marca } from "@/lib/marcas";
 
 export { geocodificarDireccion };
 
@@ -47,7 +47,7 @@ function mejorGasolineraEnPunto(
   punto: Coordenadas,
   gasolineras: Gasolinera[],
   combustible: TipoCombustible,
-  marcaPreferida: MarcaDescuento | null,
+  marcaPreferida: Marca | null,
   radioKm = 10
 ): Gasolinera | null {
   return (
@@ -71,7 +71,7 @@ export async function planificarViaje(
   todasGasolineras: Gasolinera[],
   vehiculo: Vehiculo,
   combustible: TipoCombustible,
-  marcaPreferida: MarcaDescuento | null = null
+  marcaPreferida: Marca | null = null
 ): Promise<PlanViaje> {
   const { distanciaKm, coordenadas } = await obtenerRutaOSRM(origen, destinoCoordenadas);
 

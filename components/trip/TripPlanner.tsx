@@ -9,7 +9,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { AutocompleteInput } from "@/components/trip/AutocompleteInput";
 import type { LugarSugerido } from "@/lib/geocoding";
-import { PROGRAMAS_DESCUENTO, type MarcaDescuento } from "@/lib/marcas";
+import { MARCAS, type Marca } from "@/lib/marcas";
 import { cn } from "@/lib/utils";
 
 function urlGoogleMaps(plan: PlanViaje): string {
@@ -72,7 +72,7 @@ export function TripPlanner({
   const [origenTexto, setOrigenTexto] = useState("");
   const [destinoTexto, setDestinoTexto] = useState("");
   const [destinoCoords, setDestinoCoords] = useState<Coordenadas | null>(null);
-  const [marcaPreferida, setMarcaPreferida] = useState<MarcaDescuento | null>(null);
+  const [marcaPreferida, setMarcaPreferida] = useState<Marca | null>(null);
   const [plan, setPlan] = useState<PlanViaje | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,7 +115,7 @@ export function TripPlanner({
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "";
       if (msg === "SIN_GASOLINERAS" && marcaPreferida) {
-        const nombreMarca = PROGRAMAS_DESCUENTO.find((p) => p.marca === marcaPreferida)?.nombre;
+        const nombreMarca = MARCAS.find((m) => m.marca === marcaPreferida)?.nombre;
         setError(`No hay gasolineras ${nombreMarca} en la ruta. Prueba con "Cualquier marca".`);
       } else {
         setError(ERRORES[msg] ?? "Error al planificar el viaje. Inténtalo de nuevo.");
@@ -176,7 +176,7 @@ export function TripPlanner({
             >
               Cualquier marca
             </button>
-            {PROGRAMAS_DESCUENTO.map(({ marca, nombre }) => (
+            {MARCAS.map(({ marca, nombre }) => (
               <button
                 key={marca}
                 onClick={() => setMarcaPreferida(marca)}
