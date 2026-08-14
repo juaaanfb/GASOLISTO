@@ -9,6 +9,8 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { AutocompleteInput } from "@/components/trip/AutocompleteInput";
 import type { LugarSugerido } from "@/lib/geocoding";
+import { PROGRAMAS_DESCUENTO, type MarcaDescuento } from "@/lib/marcas";
+import { cn } from "@/lib/utils";
 
 function urlGoogleMaps(plan: PlanViaje): string {
   const coord = (c: Coordenadas) => `${c.lat},${c.lng}`;
@@ -70,6 +72,7 @@ export function TripPlanner({
   const [origenTexto, setOrigenTexto] = useState("");
   const [destinoTexto, setDestinoTexto] = useState("");
   const [destinoCoords, setDestinoCoords] = useState<Coordenadas | null>(null);
+  const [marcaPreferida, setMarcaPreferida] = useState<MarcaDescuento | null>(null);
   const [plan, setPlan] = useState<PlanViaje | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,16 +108,22 @@ export function TripPlanner({
         destinoTexto.trim(),
         todasGasolineras,
         vehiculo,
-        combustible
+        combustible,
+        marcaPreferida
       );
       setPlan(resultado);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "";
-      setError(ERRORES[msg] ?? "Error al planificar el viaje. Inténtalo de nuevo.");
+      if (msg === "SIN_GASOLINERAS" && marcaPreferida) {
+        const nombreMarca = PROGRAMAS_DESCUENTO.find((p) => p.marca === marcaPreferida)?.nombre;
+        setError(`No hay gasolineras ${nombreMarca} en la ruta. Prueba con "Cualquier marca".`);
+      } else {
+        setError(ERRORES[msg] ?? "Error al planificar el viaje. Inténtalo de nuevo.");
+      }
     } finally {
       setCargando(false);
     }
-  }, [origenTexto, destinoTexto, destinoCoords, vehiculo, coordenadas, todasGasolineras, combustible]);
+  }, [origenTexto, destinoTexto, destinoCoords, marcaPreferida, vehiculo, coordenadas, todasGasolineras, combustible]);
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-10">
@@ -149,6 +158,40 @@ export function TripPlanner({
           icon={<MapPin className="w-4 h-4" />}
           bias={coordenadas}
         />
+
+        {/* Marca preferida */}
+        <div className="space-y-1.5">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-0.5">
+            Marca de gasolinera
+          </span>
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+            <button
+              onClick={() => setMarcaPreferida(null)}
+              className={cn(
+                "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                marcaPreferida === null
+                  ? "bg-green-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              )}
+            >
+              Cualquier marca
+            </button>
+            {PROGRAMAS_DESCUENTO.map(({ marca, nombre }) => (
+              <button
+                key={marca}
+                onClick={() => setMarcaPreferida(marca)}
+                className={cn(
+                  "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                  marcaPreferida === marca
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                )}
+              >
+                {nombre}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Vehículo */}
         <button

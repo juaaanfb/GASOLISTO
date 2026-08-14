@@ -2,6 +2,7 @@ import type { Coordenadas, Gasolinera, Vehiculo, TipoCombustible } from "@/types
 import type { PlanViaje, ParadaRepostaje } from "@/types/trip";
 import { calcularDistancia, calcularEstadisticas, obtenerPrecio } from "@/lib/calculos";
 import { geocodificarDireccion } from "@/lib/geocoding";
+import { detectarMarca, type MarcaDescuento } from "@/lib/marcas";
 
 export { geocodificarDireccion };
 
@@ -46,11 +47,13 @@ function mejorGasolineraEnPunto(
   punto: Coordenadas,
   gasolineras: Gasolinera[],
   combustible: TipoCombustible,
+  marcaPreferida: MarcaDescuento | null,
   radioKm = 10
 ): Gasolinera | null {
   return (
     gasolineras
       .filter((g) => obtenerPrecio(g, combustible) !== undefined)
+      .filter((g) => !marcaPreferida || detectarMarca(g.nombre) === marcaPreferida)
       .map((g) => ({
         g,
         d: calcularDistancia(punto, { lat: g.latitud, lng: g.longitud }),
@@ -67,7 +70,8 @@ export async function planificarViaje(
   destinoTexto: string,
   todasGasolineras: Gasolinera[],
   vehiculo: Vehiculo,
-  combustible: TipoCombustible
+  combustible: TipoCombustible,
+  marcaPreferida: MarcaDescuento | null = null
 ): Promise<PlanViaje> {
   const { distanciaKm, coordenadas } = await obtenerRutaOSRM(origen, destinoCoordenadas);
 
@@ -82,7 +86,7 @@ export async function planificarViaje(
   for (const { punto, kmAcum } of puntos) {
     if (kmAcum >= distanciaKm - 30) break;
 
-    const gasolinera = mejorGasolineraEnPunto(punto, todasGasolineras, combustible);
+    const gasolinera = mejorGasolineraEnPunto(punto, todasGasolineras, combustible, marcaPreferida);
     if (!gasolinera) continue;
 
     const precio = obtenerPrecio(gasolinera, combustible)!;
