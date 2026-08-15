@@ -4,4 +4,4 @@
 // que rompería las URLs canónicas y las tarjetas de OG/Twitter.
 // Centralizado aquí (en vez de repetido en layout/robots/sitemap) porque
 // cambiará el día que el dominio propio esté listo.
-export const SITE_URL = "https://gasolisto.vercel.app";
+export const SITE_URL = "https://gasolisto.com";
