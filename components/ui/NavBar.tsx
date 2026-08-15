@@ -19,7 +19,7 @@ const tabs = [
 
 export function NavBar({ tabActiva, onChange, aviso }: NavBarProps) {
   return (
-    <div className="bg-white border-t border-gray-100 safe-area-bottom">
+    <div className="relative z-[60] bg-white border-t border-gray-100 safe-area-bottom">
       {aviso && (
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-100">
           <AlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
