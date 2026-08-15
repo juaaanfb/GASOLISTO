@@ -12,7 +12,12 @@ interface BottomSheetProps {
 
 const alturas = {
   media: "h-[55vh]",
-  completa: "h-[90vh]",
+  // Con "bottom-16" reservando la barra inferior (4rem) y el sheet a 90vh,
+  // en ventanas de escritorio bajas (habituales sin pantalla completa) el
+  // panel podía llegar a solapar la cabecera —tapando el botón de Ayuda—
+  // porque nada limitaba su alto máximo. El tope reserva también espacio
+  // para la cabecera (~3.5rem) para que eso ya no pueda pasar.
+  completa: "h-[90vh] max-h-[calc(100dvh-7.5rem)]",
   auto: "max-h-[90vh]",
 };
 

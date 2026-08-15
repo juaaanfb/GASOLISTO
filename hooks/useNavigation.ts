@@ -96,6 +96,19 @@ export function useNavigation({
     setTabActiva("mapa");
   }, []);
 
+  // Para acciones globales de cabecera (Ayuda, Descuentos): si hay un panel
+  // secundario abierto (detalle, vehículos, formulario) lo cierra primero,
+  // de forma explícita, para que ese panel no quede tapando la cabecera ni
+  // reapareciendo de forma inconsistente al cerrar el modal. Si no hay
+  // ningún panel abierto no toca nada (no fuerza el tab a "mapa" si el
+  // usuario estaba en Lista o Viaje).
+  const cerrarPantallaSecundaria = useCallback(() => {
+    if (pantalla === null) return;
+    setPantalla(null);
+    setSeleccionadaId(null);
+    setTabActiva("mapa");
+  }, [pantalla]);
+
   const esVehiculoNuevo = vehiculoEditando
     ? !vehiculos.some((v) => v.id === vehiculoEditando.id)
     : false;
@@ -114,5 +127,6 @@ export function useNavigation({
     handleEliminarVehiculo,
     cerrarDetalle,
     cerrarVehiculos,
+    cerrarPantallaSecundaria,
   };
 }

@@ -13,3 +13,15 @@ export function normalizarTexto(texto: string): string {
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
 }
+
+// Une partes de dirección evitando comas duplicadas o colgantes. El campo
+// "Dirección" del MITECO a veces trae segmentos vacíos entre comas (p.ej.
+// "CALLE JOSE PAULETE, " cuando falta el número), que al concatenar con la
+// localidad producía "CALLE JOSE PAULETE, , MADRID".
+export function formatDireccion(...partes: (string | null | undefined)[]): string {
+  return partes
+    .flatMap((p) => (p ?? "").split(","))
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(", ");
+}

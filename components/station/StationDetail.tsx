@@ -7,7 +7,7 @@ import type { Gasolinera, Vehiculo, TipoCombustible } from "@/types";
 import { COMBUSTIBLES } from "@/types";
 import { calcularAhorro, calcularEstadisticas, clasificarPrecio, obtenerPrecio, formatPrecio, formatEuros } from "@/lib/calculos";
 import { precioConDescuento } from "@/lib/marcas";
-import { cn } from "@/lib/utils";
+import { cn, formatDireccion } from "@/lib/utils";
 import type { AlertaConfig } from "@/hooks/useAlertas";
 import type { Descuentos } from "@/hooks/useDescuentos";
 
@@ -161,7 +161,7 @@ export function StationDetail({
           <h2 className="font-bold text-gray-900 text-base leading-tight">{gasolinera.nombre}</h2>
           <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
             <MapPin className="w-3 h-3 flex-shrink-0" />
-            <span className="truncate">{gasolinera.direccion}, {gasolinera.localidad}</span>
+            <span className="truncate">{formatDireccion(gasolinera.direccion, gasolinera.localidad)}</span>
           </div>
         </div>
         <div className="flex items-center gap-1 ml-2 flex-shrink-0">

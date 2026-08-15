@@ -95,6 +95,7 @@ export default function HomePage() {
     handleEliminarVehiculo,
     cerrarDetalle,
     cerrarVehiculos,
+    cerrarPantallaSecundaria,
   } = useNavigation({ vehiculos, guardarVehiculo, eliminarVehiculo, seleccionarVehiculo, crearVehiculo, setFiltros });
 
   // Gasolineras a mostrar en la lista (filtradas por favoritas si aplica)
@@ -193,14 +194,14 @@ export default function HomePage() {
             </span>
           )}
           <button
-            onClick={() => setDescuentosVisible(true)}
+            onClick={() => { cerrarPantallaSecundaria(); setDescuentosVisible(true); }}
             aria-label="Mis descuentos con tarjetas y apps"
             className="p-1 rounded-full hover:bg-gray-100 transition-colors"
           >
             <Percent className="w-4 h-4 text-gray-400" />
           </button>
           <button
-            onClick={abrirOnboarding}
+            onClick={() => { cerrarPantallaSecundaria(); abrirOnboarding(); }}
             aria-label="Qué puedes hacer en Gasolisto"
             className="p-1 rounded-full hover:bg-gray-100 transition-colors"
           >
@@ -270,6 +271,19 @@ export default function HomePage() {
           visible={tabActiva === "mapa" && pantalla === null}
           onSelect={handleSelect}
         />
+
+        {/* Carga inicial: sin esto el mapa se veía unos segundos sin pines,
+            precios ni contador —vacío y sin explicación— mientras la petición
+            a /api/gasolineras seguía en curso (la Lista sí mostraba su propio
+            spinner para el mismo estado). */}
+        {cargando && tabActiva === "mapa" && pantalla === null && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80" style={{ zIndex: 500 }}>
+            <div className="bg-white rounded-2xl shadow-card-hover px-4 py-3 flex items-center gap-2.5">
+              <Spinner className="w-4 h-4" />
+              <p className="text-xs text-gray-600">Cargando gasolineras de España…</p>
+            </div>
+          </div>
+        )}
 
         {/* Avisos superiores: ubicación de respaldo y modo "sin límite" */}
         {(esFallback || (tabActiva === "mapa" && filtros.radio === null)) && (
