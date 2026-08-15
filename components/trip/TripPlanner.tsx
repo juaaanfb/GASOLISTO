@@ -217,6 +217,14 @@ export function TripPlanner({
           {cargando ? "Calculando ruta…" : "Calcular ruta"}
         </button>
 
+        {!cargando && (!destinoTexto.trim() || !vehiculo) && (
+          <p className="text-xs text-gray-400 text-center -mt-1">
+            {!destinoTexto.trim()
+              ? "Añade tu destino para calcular la ruta."
+              : "Configura tu vehículo para estimar el ahorro y las paradas."}
+          </p>
+        )}
+
         {error && (
           <p className="text-sm text-red-600 bg-red-50 rounded-xl py-2.5 px-3 text-center">
             {error}

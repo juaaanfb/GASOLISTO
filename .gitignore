@@ -6,5 +6,6 @@ build/
 npm-debug.log*
 .DS_Store
 .vercel
+.claude/
 *.tsbuildinfo
 next-env.d.ts

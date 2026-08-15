@@ -42,7 +42,7 @@ export function BottomSheet({
       {/* Panel */}
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-50",
+          "fixed bottom-16 left-0 right-0 z-50",
           "bg-white rounded-t-3xl shadow-bottom",
           "transition-transform duration-300 ease-out",
           "overflow-hidden flex flex-col",

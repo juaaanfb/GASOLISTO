@@ -7,7 +7,7 @@ const ACTIVO_KEY = "gasolisto_vehiculo_activo";
 
 const VEHICULO_DEFAULT: Vehiculo = {
   id: "default",
-  nombre: "vehículo",
+  nombre: "Coche estándar",
   combustible: "gasolina95",
   consumo: 6.5,
   deposito: 50,

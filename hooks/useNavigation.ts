@@ -44,11 +44,15 @@ export function useNavigation({
     } else if (tab === "viaje") {
       setPantalla(null);
     } else {
+      // tab === "mapa" | "lista": cierra cualquier pantalla secundaria para
+      // que el tab pulsado se refleje al momento. Antes, con un detalle
+      // abierto, pulsar otro tab no cambiaba nada visible (el detalle
+      // seguía tapando la vista) y parecía que el tab no respondía.
       setPantalla((prev) => {
         if (prev === "vehiculos" || prev === "formVehiculo") {
           return seleccionadaIdRef.current ? "detalle" : null;
         }
-        return prev;
+        return null;
       });
     }
   }, []);

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, MapPin, Clock, Navigation2, ExternalLink, Fuel, Star, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -128,6 +128,17 @@ export function StationDetail({
     : "";
   const [umbralInput, setUmbralInput] = useState(umbralInicial);
 
+  // Estado real de las notificaciones del navegador: no prometemos avisos
+  // del sistema que el navegador no puede entregar (sin soporte o bloqueadas).
+  const [permisoNotif, setPermisoNotif] = useState<NotificationPermission | "no-soportado" | null>(null);
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setPermisoNotif(Notification.permission);
+    } else {
+      setPermisoNotif("no-soportado");
+    }
+  }, []);
+
   const urlGoogleMaps = `https://www.google.com/maps/dir/?api=1&destination=${gasolinera.latitud},${gasolinera.longitud}`;
   const urlAppleMaps = `https://maps.apple.com/?daddr=${gasolinera.latitud},${gasolinera.longitud}`;
 
@@ -137,7 +148,7 @@ export function StationDetail({
     const umbral = parseFloat(umbralInput);
     if (isNaN(umbral) || umbral <= 0) return;
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
+      Notification.requestPermission().then(setPermisoNotif);
     }
     onGuardarAlerta({ gasolineraId: gasolinera.id, combustible: combustibleActivo, umbral });
   };
@@ -318,6 +329,15 @@ export function StationDetail({
         <div className="px-4 pb-4">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Alertas de precio</p>
           <div className="bg-gray-50 rounded-2xl p-3 space-y-3">
+            {/* Aviso honesto: sin service worker no hay push real en segundo
+                plano, así que no prometemos más de lo que la app entrega. */}
+            <p className="text-xs text-gray-500 leading-snug">
+              {permisoNotif === "no-soportado"
+                ? "Tu navegador no admite avisos del sistema: verás la alerta dentro de la app la próxima vez que la abras."
+                : permisoNotif === "denied"
+                ? "Avisos del sistema bloqueados: verás la alerta dentro de la app la próxima vez que la abras."
+                : "Verás la alerta dentro de la app, y como aviso del sistema si lo permites, mientras la tengas abierta en el navegador."}
+            </p>
             {/* Umbral */}
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-gray-400 flex-shrink-0" />

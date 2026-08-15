@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { AlertCircle, Bell, HelpCircle, Percent, X } from "lucide-react";
+import { AlertCircle, Bell, HelpCircle, MapPin, Percent, X } from "lucide-react";
 import { WelcomeModal, useOnboarding } from "@/components/onboarding/WelcomeModal";
 import { DescuentosForm } from "@/components/discounts/DescuentosForm";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -51,12 +51,26 @@ const FILTROS_INICIALES: Filtros = {
 // sigue mostrando siempre las más baratas primero.
 const LIMITE_RENDERIZADO = 300;
 
+const HINT_MAPA_KEY = "gasolisto_hint_mapa_visto";
+
 export default function HomePage() {
   const { coordenadas, error: errorGeo, esFallback } = useGeolocation();
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
   const [soloFavoritas, setSoloFavoritas] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [hintMapaVisible, setHintMapaVisible] = useState(false);
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(HINT_MAPA_KEY)) setHintMapaVisible(true);
+    } catch {}
+  }, []);
+  const cerrarHintMapa = () => {
+    try {
+      localStorage.setItem(HINT_MAPA_KEY, "1");
+    } catch {}
+    setHintMapaVisible(false);
+  };
   const { visible: onboardingVisible, cerrar: cerrarOnboarding, abrir: abrirOnboarding } = useOnboarding();
   const { descuentos, guardar: guardarDescuentos } = useDescuentos();
   const [descuentosVisible, setDescuentosVisible] = useState(false);
@@ -174,7 +188,9 @@ export default function HomePage() {
         <div className="flex items-center gap-2">
           {cargando && <Spinner className="w-4 h-4" />}
           {!cargando && !error && (
-            <span className="text-xs text-gray-400">{gasolinerasMostradas.length} cerca</span>
+            <span className="text-xs text-gray-400">
+              {gasolinerasMostradas.length} {esFallback ? "en Madrid" : "cerca"}
+            </span>
           )}
           <button
             onClick={() => setDescuentosVisible(true)}
@@ -226,6 +242,23 @@ export default function HomePage() {
         onToggleSoloFavoritas={() => setSoloFavoritas((v) => !v)}
       />
 
+      {/* Microayuda de primera vista: qué hacer con los precios del mapa */}
+      {hintMapaVisible && tabActiva === "mapa" && pantalla === null && (
+        <div className="bg-green-50 border-b border-green-100 px-4 py-2 flex items-center gap-2 flex-shrink-0">
+          <MapPin className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+          <p className="text-xs text-green-700 flex-1 leading-snug">
+            Toca un precio para ver gasolinera, ahorro y ruta · Datos oficiales MITECO
+          </p>
+          <button
+            onClick={cerrarHintMapa}
+            aria-label="Cerrar ayuda"
+            className="p-0.5 text-green-500 hover:text-green-700 flex-shrink-0"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Mapa — ocupa todo el espacio restante */}
       <div className="flex-1 relative overflow-hidden">
         <MapView
@@ -243,7 +276,7 @@ export default function HomePage() {
           <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 px-4 w-full">
             {esFallback && (
               <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-card text-xs text-amber-700 font-medium border border-amber-100 whitespace-nowrap">
-                Mostrando Madrid (sin acceso a tu ubicación)
+                Mostrando Madrid como referencia
               </div>
             )}
             {tabActiva === "mapa" && filtros.radio === null && (

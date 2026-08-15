@@ -27,6 +27,29 @@ function crearIconoPrecio(L: typeof import("leaflet"), precio: number, color: st
   });
 }
 
+// Los marcadores son <div> (L.divIcon), no <img>, así que Leaflet no les
+// pone ningún nombre accesible por defecto: un lector de pantalla los
+// anunciaba solo por su texto visible ("1.699"). Con role+aria-label el
+// marcador se anuncia como "Repsol, Madrid, 1,699 euros por litro".
+function aplicarAccesibilidadMarcador(
+  marcador: import("leaflet").Marker,
+  gasolinera: Gasolinera,
+  precio: number,
+  onSelect: (g: Gasolinera) => void
+) {
+  const el = marcador.getElement();
+  if (!el) return;
+  el.setAttribute("role", "button");
+  el.setAttribute("tabindex", "0");
+  el.setAttribute("aria-label", `${gasolinera.nombre}, ${gasolinera.localidad}, ${precio.toFixed(3)} euros por litro`);
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect(gasolinera);
+    }
+  });
+}
+
 export function MapView({ gasolineras, combustible, centro, seleccionadaId, activo, visible, onSelect }: MapViewProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const mapaRef = useRef<import("leaflet").Map | null>(null);
@@ -34,7 +57,7 @@ export function MapView({ gasolineras, combustible, centro, seleccionadaId, acti
   // Precio/color de cada marcador, para poder recalcular solo su icono al
   // (de)seleccionarlo sin tener que reconstruir los demás (ver efecto de
   // seleccionadaId más abajo).
-  const datosMarcadorRef = useRef<Map<string, { precio: number; color: string }>>(new Map());
+  const datosMarcadorRef = useRef<Map<string, { precio: number; color: string; gasolinera: Gasolinera }>>(new Map());
   const seleccionadaAnteriorRef = useRef<string | null>(null);
   const pinUsuarioRef = useRef<import("leaflet").Marker | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
@@ -160,7 +183,7 @@ export function MapView({ gasolineras, combustible, centro, seleccionadaId, acti
         const esSeleccionada = g.id === seleccionadaIdRef.current;
 
         const icono = crearIconoPrecio(L, precio, color, esSeleccionada);
-        datosMarcadorRef.current.set(g.id, { precio, color });
+        datosMarcadorRef.current.set(g.id, { precio, color, gasolinera: g });
 
         const tooltip = L.tooltip({
           permanent: false,
@@ -197,6 +220,8 @@ export function MapView({ gasolineras, combustible, centro, seleccionadaId, acti
           .bindTooltip(tooltip)
           .on("click", () => onSelectRef.current(g));
 
+        aplicarAccesibilidadMarcador(marcador, g, precio, (sel) => onSelectRef.current(sel));
+
         marcadoresRef.current.set(g.id, marcador);
       });
     };
@@ -217,6 +242,9 @@ export function MapView({ gasolineras, combustible, centro, seleccionadaId, acti
       if (!marcador || !datos) return;
       const L = (await import("leaflet")).default;
       marcador.setIcon(crearIconoPrecio(L, datos.precio, datos.color, seleccionada));
+      // setIcon crea un <div> nuevo: hay que reaplicar el aria-label y el
+      // manejador de teclado, que vivían en el nodo anterior.
+      aplicarAccesibilidadMarcador(marcador, datos.gasolinera, datos.precio, (sel) => onSelectRef.current(sel));
     };
 
     actualizarIcono(anterior, false);
