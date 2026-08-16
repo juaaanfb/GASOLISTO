@@ -7,6 +7,11 @@ interface MapViewProps {
   gasolineras: Gasolinera[];
   combustible: TipoCombustible;
   centro: Coordenadas;
+  // Posición real del usuario (pin azul). Puede no coincidir con "centro":
+  // al buscar una ciudad, el mapa se centra ahí pero el pin de "tú estás
+  // aquí" no debe saltar a esa ciudad. null = sin ubicación real conocida
+  // (permiso denegado o fallback interno) → no se dibuja el pin.
+  ubicacionUsuario: Coordenadas | null;
   seleccionadaId: string | null;
   activo: boolean;
   visible: boolean;
@@ -50,7 +55,7 @@ function aplicarAccesibilidadMarcador(
   });
 }
 
-export function MapView({ gasolineras, combustible, centro, seleccionadaId, activo, visible, onSelect }: MapViewProps) {
+export function MapView({ gasolineras, combustible, centro, ubicacionUsuario, seleccionadaId, activo, visible, onSelect }: MapViewProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const mapaRef = useRef<import("leaflet").Map | null>(null);
   const marcadoresRef = useRef<Map<string, import("leaflet").Marker>>(new Map());
@@ -70,6 +75,10 @@ export function MapView({ gasolineras, combustible, centro, seleccionadaId, acti
   // deps (ver más abajo), así que se lee vía ref.
   const seleccionadaIdRef = useRef(seleccionadaId);
   useEffect(() => { seleccionadaIdRef.current = seleccionadaId; }, [seleccionadaId]);
+  // El efecto de inicialización solo corre una vez, así que lee el valor
+  // inicial de ubicacionUsuario vía ref para decidir si crea el pin o no.
+  const ubicacionUsuarioRef = useRef(ubicacionUsuario);
+  useEffect(() => { ubicacionUsuarioRef.current = ubicacionUsuario; }, [ubicacionUsuario]);
 
   // Inicializar mapa UNA SOLA VEZ
   useEffect(() => {
@@ -105,17 +114,22 @@ export function MapView({ gasolineras, combustible, centro, seleccionadaId, acti
         maxZoom: 19,
       }).addTo(mapa);
 
-      const iconoUsuario = L.divIcon({
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:#2563eb;border:3px solid white;box-shadow:0 0 0 3px rgba(37,99,235,0.3)"></div>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
-        className: "",
-      });
+      // El pin solo se crea si ya hay ubicación real conocida en este
+      // primer render; si llega más tarde (o al buscar/limpiar una zona),
+      // el efecto dedicado a ubicacionUsuario más abajo lo crea/mueve/quita.
+      if (ubicacionUsuarioRef.current) {
+        const iconoUsuario = L.divIcon({
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:#2563eb;border:3px solid white;box-shadow:0 0 0 3px rgba(37,99,235,0.3)"></div>`,
+          iconSize: [14, 14],
+          iconAnchor: [7, 7],
+          className: "",
+        });
 
-      pinUsuarioRef.current = L.marker([centro.lat, centro.lng], {
-        icon: iconoUsuario,
-        zIndexOffset: 1000,
-      }).addTo(mapa);
+        pinUsuarioRef.current = L.marker(
+          [ubicacionUsuarioRef.current.lat, ubicacionUsuarioRef.current.lng],
+          { icon: iconoUsuario, zIndexOffset: 1000 }
+        ).addTo(mapa);
+      }
 
       mapaRef.current = mapa;
 
@@ -152,12 +166,45 @@ export function MapView({ gasolineras, combustible, centro, seleccionadaId, acti
     mapaRef.current?.invalidateSize({ animate: false });
   }, [activo]);
 
-  // Mover el pin de usuario y reclinar el mapa cuando la geolocalización responde
+  // Reclinar el mapa cuando cambia el centro (geolocalización, zona
+  // buscada o al limpiarla). Independiente del pin de usuario: centrar en
+  // una ciudad buscada no debe mover el pin de "tú estás aquí".
   useEffect(() => {
-    if (!mapaRef.current || !pinUsuarioRef.current) return;
-    pinUsuarioRef.current.setLatLng([centro.lat, centro.lng]);
+    if (!mapaRef.current) return;
     mapaRef.current.setView([centro.lat, centro.lng], 13, { animate: true });
   }, [centro]);
+
+  // Crea, mueve o quita el pin de ubicación real del usuario según llega,
+  // cambia o se pierde (p.ej. al buscar una zona ya no representa "aquí").
+  useEffect(() => {
+    if (!mapaRef.current) return;
+
+    if (!ubicacionUsuario) {
+      pinUsuarioRef.current?.remove();
+      pinUsuarioRef.current = null;
+      return;
+    }
+
+    if (pinUsuarioRef.current) {
+      pinUsuarioRef.current.setLatLng([ubicacionUsuario.lat, ubicacionUsuario.lng]);
+      return;
+    }
+
+    import("leaflet").then((mod) => {
+      const L = mod.default;
+      if (!mapaRef.current || pinUsuarioRef.current) return;
+      const iconoUsuario = L.divIcon({
+        html: `<div style="width:14px;height:14px;border-radius:50%;background:#2563eb;border:3px solid white;box-shadow:0 0 0 3px rgba(37,99,235,0.3)"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+        className: "",
+      });
+      pinUsuarioRef.current = L.marker(
+        [ubicacionUsuario.lat, ubicacionUsuario.lng],
+        { icon: iconoUsuario, zIndexOffset: 1000 }
+      ).addTo(mapaRef.current);
+    });
+  }, [ubicacionUsuario]);
 
   // Recrear marcadores solo cuando cambian gasolineras o combustible.
   // seleccionadaId y onSelect quedan FUERA de deps a propósito: seleccionar

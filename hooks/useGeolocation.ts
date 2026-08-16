@@ -44,10 +44,12 @@ export function useGeolocation(): EstadoGeolocalizacion {
         });
       },
       (err) => {
+        // Sin mención a Madrid: es solo un fallback interno para tener un
+        // centro válido, no el ámbito real de la app (cobertura nacional).
         const mensajes: Record<number, string> = {
-          1: "Permiso de ubicación denegado. Mostrando Madrid.",
-          2: "No se pudo obtener tu ubicación. Mostrando Madrid.",
-          3: "Tiempo de espera agotado. Mostrando Madrid.",
+          1: "Permiso de ubicación denegado.",
+          2: "No se pudo obtener tu ubicación.",
+          3: "Tiempo de espera agotado obteniendo tu ubicación.",
         };
         setEstado({
           coordenadas: MADRID_CENTRO,

@@ -14,6 +14,7 @@ interface AutocompleteInputProps {
   icon: React.ReactNode;
   action?: { label: string; onClick: () => void };
   bias?: Coordenadas;
+  soloLocalidades?: boolean;
   className?: string;
 }
 
@@ -26,6 +27,7 @@ export function AutocompleteInput({
   icon,
   action,
   bias,
+  soloLocalidades,
   className,
 }: AutocompleteInputProps) {
   const [sugerencias, setSugerencias] = useState<LugarSugerido[]>([]);
@@ -41,11 +43,11 @@ export function AutocompleteInput({
       return;
     }
     timerRef.current = setTimeout(async () => {
-      const resultados = await buscarLugares(texto, { bias }).catch(() => []);
+      const resultados = await buscarLugares(texto, { bias, soloLocalidades }).catch(() => []);
       setSugerencias(resultados);
       setAbierto(resultados.length > 0);
     }, 350);
-  }, [bias]);
+  }, [bias, soloLocalidades]);
 
   useEffect(() => {
     buscar(value);

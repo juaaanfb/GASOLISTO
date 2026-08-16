@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { AlertCircle, Bell, HelpCircle, MapPin, Percent, X } from "lucide-react";
+import { AlertCircle, Bell, HelpCircle, MapPin, Percent, Search, X } from "lucide-react";
 import { WelcomeModal, useOnboarding } from "@/components/onboarding/WelcomeModal";
 import { DescuentosForm } from "@/components/discounts/DescuentosForm";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -12,6 +12,7 @@ import { StationDetail } from "@/components/station/StationDetail";
 import { VehicleSelector } from "@/components/vehicle/VehicleSelector";
 import { VehicleForm } from "@/components/vehicle/VehicleForm";
 import { Spinner } from "@/components/ui/Spinner";
+import { AutocompleteInput } from "@/components/trip/AutocompleteInput";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useGasolineras, useEstadisticas } from "@/hooks/useGasolineras";
 import { useVehiculo } from "@/hooks/useVehiculo";
@@ -21,7 +22,8 @@ import { useAlertas } from "@/hooks/useAlertas";
 import { useDescuentos } from "@/hooks/useDescuentos";
 import { obtenerPrecio } from "@/lib/calculos";
 import { normalizarTexto } from "@/lib/utils";
-import type { Filtros } from "@/types";
+import { buscarLugares, type LugarSugerido } from "@/lib/geocoding";
+import type { Filtros, Coordenadas } from "@/types";
 
 const MapView = dynamic(
   () => import("@/components/map/MapView").then((m) => m.MapView),
@@ -75,8 +77,58 @@ export default function HomePage() {
   const { descuentos, guardar: guardarDescuentos } = useDescuentos();
   const [descuentosVisible, setDescuentosVisible] = useState(false);
 
+  // Búsqueda de ciudad/zona: cuando hay una zona activa, manda sobre la
+  // ubicación real o el fallback interno (el usuario la ha elegido a
+  // propósito, p.ej. para mirar precios antes de un viaje).
+  const [zonaTexto, setZonaTexto] = useState("");
+  const [zonaActiva, setZonaActiva] = useState<{ label: string; coords: Coordenadas } | null>(null);
+  const [buscandoZona, setBuscandoZona] = useState(false);
+  const [errorZona, setErrorZona] = useState<string | null>(null);
+
+  const cambiarZonaTexto = (v: string) => {
+    setZonaTexto(v);
+    setErrorZona(null);
+    if (v.trim() === "") setZonaActiva(null);
+  };
+  const seleccionarZona = (lugar: LugarSugerido) => {
+    setZonaTexto(lugar.label);
+    setZonaActiva({ label: lugar.label, coords: { lat: lugar.lat, lng: lugar.lng } });
+    setErrorZona(null);
+  };
+  const buscarZona = async () => {
+    const q = zonaTexto.trim();
+    if (!q || buscandoZona) return;
+    setBuscandoZona(true);
+    setErrorZona(null);
+    try {
+      const [primero] = await buscarLugares(q, { limit: 1, soloLocalidades: true });
+      if (!primero) throw new Error("NO_ENCONTRADO");
+      setZonaActiva({ label: primero.label, coords: { lat: primero.lat, lng: primero.lng } });
+      setZonaTexto(primero.label);
+    } catch {
+      setErrorZona("No se encontró esa ciudad o zona. Prueba con otro nombre.");
+    } finally {
+      setBuscandoZona(false);
+    }
+  };
+  const limpiarZona = () => {
+    setZonaActiva(null);
+    setZonaTexto("");
+    setErrorZona(null);
+  };
+  // Primer tramo de la etiqueta ("Valencia, Comunidad Valenciana" → "Valencia")
+  // para textos cortos (contador, pill) sin repetir la dirección completa.
+  const zonaCorta = zonaActiva?.label.split(",")[0].trim() ?? "";
+
+  // Centro efectivo para mapa/lista: zona buscada > ubicación real > fallback
+  // interno (coordenadas ya resuelve esa segunda prioridad por su cuenta).
+  const centroActivo = zonaActiva?.coords ?? coordenadas;
+  // Pin "tú estás aquí": solo con ubicación real confirmada, nunca con el
+  // fallback interno ni con una zona buscada (no son "tu" ubicación).
+  const ubicacionUsuario = esFallback ? null : coordenadas;
+
   const { vehiculos, vehiculoActivo, guardarVehiculo, eliminarVehiculo, seleccionarVehiculo, crearVehiculo, hidratado } = useVehiculo();
-  const { todas, filtradas, cargando, error, ultimaActualizacion, refetch } = useGasolineras(coordenadas, filtros);
+  const { todas, filtradas, cargando, error, ultimaActualizacion, refetch } = useGasolineras(centroActivo, filtros);
   const stats = useEstadisticas(filtradas, filtros);
   const { favoritas, toggleFavorita } = useFavoritas();
   const { alertas, resumenDiario, guardarAlerta, eliminarAlerta, obtenerAlerta, setResumenDiario } = useAlertas();
@@ -190,7 +242,7 @@ export default function HomePage() {
           {cargando && <Spinner className="w-4 h-4" />}
           {!cargando && !error && (
             <span className="text-xs text-gray-400">
-              {gasolinerasMostradas.length} {esFallback ? "en Madrid" : "cerca"}
+              {gasolinerasMostradas.length} {zonaActiva ? `en ${zonaCorta}` : esFallback ? "disponibles" : "cerca"}
             </span>
           )}
           <button
@@ -209,6 +261,23 @@ export default function HomePage() {
           </button>
         </div>
       </header>
+
+      {/* Buscador de ciudad/zona: refuerza que Gasolisto sirve para toda
+          España, no solo para el fallback interno de Madrid. */}
+      <div className="bg-white border-b border-gray-100 px-4 py-2.5 flex-shrink-0">
+        <AutocompleteInput
+          value={zonaTexto}
+          onChange={cambiarZonaTexto}
+          onSeleccionar={seleccionarZona}
+          onKeyDown={(e) => e.key === "Enter" && buscarZona()}
+          placeholder="Busca ciudad o zona"
+          icon={buscandoZona ? <Spinner className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+          soloLocalidades
+        />
+        {errorZona && (
+          <p className="text-xs text-red-600 mt-1.5 px-1">{errorZona}</p>
+        )}
+      </div>
 
       {/* Banner de alertas y resumen diario */}
       {mostrarBanner && (
@@ -265,7 +334,8 @@ export default function HomePage() {
         <MapView
           gasolineras={gasolinerasMapa}
           combustible={filtros.combustible}
-          centro={coordenadas}
+          centro={centroActivo}
+          ubicacionUsuario={ubicacionUsuario}
           seleccionadaId={seleccionadaId}
           activo={tabActiva === "mapa"}
           visible={tabActiva === "mapa" && pantalla === null}
@@ -285,14 +355,28 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Avisos superiores: ubicación de respaldo y modo "sin límite" */}
-        {(esFallback || (tabActiva === "mapa" && filtros.radio === null)) && (
+        {/* Avisos superiores: zona buscada, ubicación de respaldo y modo
+            "sin límite". Nunca se menciona Madrid: el fallback interno es
+            solo eso, interno — de cara al usuario invitamos a buscar su
+            ciudad o dar permiso de ubicación. */}
+        {(zonaActiva || esFallback || (tabActiva === "mapa" && filtros.radio === null)) && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 px-4 w-full">
-            {esFallback && (
-              <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-card text-xs text-amber-700 font-medium border border-amber-100 whitespace-nowrap">
-                Mostrando Madrid como referencia
+            {zonaActiva ? (
+              <div className="bg-white/90 backdrop-blur-sm pl-3 pr-1.5 py-1.5 rounded-full shadow-card text-xs text-gray-700 font-medium border border-gray-200 flex items-center gap-1.5 max-w-full">
+                <span className="truncate">Mostrando {zonaCorta}</span>
+                <button
+                  onClick={limpiarZona}
+                  aria-label="Quitar búsqueda de zona"
+                  className="p-0.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex-shrink-0"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </div>
-            )}
+            ) : esFallback ? (
+              <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-card text-xs text-amber-700 font-medium border border-amber-100 text-center">
+                Busca tu ciudad o permite ubicación para ver gasolineras cercanas
+              </div>
+            ) : null}
             {tabActiva === "mapa" && filtros.radio === null && (
               <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-card text-xs text-gray-600 font-medium border border-gray-200 text-center">
                 Mostrando las más cercanas · en Lista verás las más baratas de España
