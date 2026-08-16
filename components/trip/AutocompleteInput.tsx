@@ -34,6 +34,13 @@ export function AutocompleteInput({
   const [abierto, setAbierto] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contenedorRef = useRef<HTMLDivElement>(null);
+  // Último label puesto en el input por una selección (click o Enter en una
+  // sugerencia), no por tecleo del usuario. onChange(s.label) dispara el
+  // useEffect de abajo igual que si el usuario hubiera escrito ese texto,
+  // así que sin esta marca la búsqueda por debounce volvía a lanzarse sola
+  // tras seleccionar y reabría el desplegable como si hubiese que confirmar
+  // otra vez.
+  const ultimoSeleccionadoRef = useRef<string | null>(null);
 
   const buscar = useCallback((texto: string) => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -50,6 +57,14 @@ export function AutocompleteInput({
   }, [bias, soloLocalidades]);
 
   useEffect(() => {
+    // Si este cambio de "value" viene de una selección (no de tecleo),
+    // se consume la marca y se salta esta búsqueda — pero solo una vez:
+    // si el usuario vuelve a escribir (aunque acabe coincidiendo con el
+    // mismo texto), la búsqueda debe volver a funcionar con normalidad.
+    if (ultimoSeleccionadoRef.current !== null && value === ultimoSeleccionadoRef.current) {
+      ultimoSeleccionadoRef.current = null;
+      return;
+    }
     buscar(value);
   }, [value, buscar]);
 
@@ -65,6 +80,7 @@ export function AutocompleteInput({
   }, []);
 
   const seleccionar = (s: LugarSugerido) => {
+    ultimoSeleccionadoRef.current = s.label;
     onChange(s.label);
     onSeleccionar?.(s);
     setSugerencias([]);
