@@ -11,6 +11,7 @@ const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posth
 function PostHogPageView({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const search = searchParams.toString();
 
   useEffect(() => {
     if (!enabled || !POSTHOG_KEY) return;
@@ -18,7 +19,7 @@ function PostHogPageView({ enabled }: { enabled: boolean }) {
     posthog.capture("$pageview", {
       $current_url: window.location.href,
     });
-  }, [enabled, pathname, searchParams]);
+  }, [enabled, pathname, search]);
 
   return null;
 }
@@ -34,9 +35,8 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       person_profiles: "identified_only",
       capture_pageview: false,
       capture_pageleave: true,
+      loaded: () => setPosthogReady(true),
     });
-
-    setPosthogReady(true);
   }, []);
 
   if (!POSTHOG_KEY) {
