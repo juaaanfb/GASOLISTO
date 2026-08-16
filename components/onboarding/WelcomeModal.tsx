@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Map, Star, Bell, Car, Percent, Route, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { FEEDBACK_FORM_URL } from "@/lib/site";
 
 const KEY = "gasolisto_onboarding_visto";
 
@@ -109,6 +110,15 @@ export function WelcomeModal({ onCerrar }: WelcomeModalProps) {
           <div className="flex items-center justify-center gap-3 text-xs text-gray-400">
             <a href="/como-funciona" className="hover:text-gray-600 underline underline-offset-2">
               Cómo funciona
+            </a>
+            <span>·</span>
+            <a
+              href={FEEDBACK_FORM_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-gray-600 underline underline-offset-2"
+            >
+              Feedback
             </a>
             <span>·</span>
             <a href="/privacidad" className="hover:text-gray-600 underline underline-offset-2">

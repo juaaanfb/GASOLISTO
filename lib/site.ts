@@ -5,3 +5,6 @@
 // Centralizado aquí (en vez de repetido en layout/robots/sitemap) porque
 // cambiará el día que el dominio propio esté listo.
 export const SITE_URL = "https://gasolisto.com";
+
+export const FEEDBACK_FORM_URL =
+  "https://docs.google.com/forms/d/1Le1pWdBLZYjhxNn82aZBAjWhg2HJoEJlA4Oq3r-E1qw/viewform";

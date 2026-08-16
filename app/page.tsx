@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { AlertCircle, Bell, HelpCircle, MapPin, Percent, Search, X } from "lucide-react";
+import { AlertCircle, Bell, HelpCircle, MapPin, MessageCircle, Percent, Search, X } from "lucide-react";
 import { WelcomeModal, useOnboarding } from "@/components/onboarding/WelcomeModal";
 import { DescuentosForm } from "@/components/discounts/DescuentosForm";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -21,6 +21,7 @@ import { useFavoritas } from "@/hooks/useFavoritas";
 import { useAlertas } from "@/hooks/useAlertas";
 import { useDescuentos } from "@/hooks/useDescuentos";
 import { obtenerPrecio } from "@/lib/calculos";
+import { FEEDBACK_FORM_URL } from "@/lib/site";
 import { normalizarTexto } from "@/lib/utils";
 import { buscarLugares, type LugarSugerido } from "@/lib/geocoding";
 import type { Filtros, Coordenadas } from "@/types";
@@ -252,6 +253,15 @@ export default function HomePage() {
           >
             <Percent className="w-4 h-4 text-gray-400" />
           </button>
+          <a
+            href={FEEDBACK_FORM_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Enviar feedback sobre Gasolisto"
+            className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <MessageCircle className="w-4 h-4 text-gray-400" />
+          </a>
           <button
             onClick={() => { cerrarPantallaSecundaria(); abrirOnboarding(); }}
             aria-label="Qué puedes hacer en Gasolisto"
