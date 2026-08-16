@@ -5,8 +5,8 @@ import posthog from "posthog-js";
 import { PostHogProvider as Provider } from "posthog-js/react";
 import { Suspense, useEffect, useState } from "react";
 
-const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com";
+const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim();
+const POSTHOG_HOST = (process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com").trim().replace(/\/$/, "");
 
 function PostHogPageView({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();

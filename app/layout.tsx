@@ -71,6 +71,14 @@ const JSON_LD = {
   applicationCategory: "UtilitiesApplication",
   operatingSystem: "Any (PWA)",
   inLanguage: "es-ES",
+  isAccessibleForFree: true,
+  featureList: [
+    "Comparar precios oficiales MITECO de gasolina 95, gasolina 98, diésel y GLP",
+    "Ver gasolineras cercanas en mapa y lista",
+    "Calcular ahorro aproximado por depósito según el vehículo",
+    "Guardar gasolineras favoritas, descuentos y alertas en el dispositivo",
+    "Planificar viajes con paradas recomendadas para repostar",
+  ],
   offers: {
     "@type": "Offer",
     price: "0",
