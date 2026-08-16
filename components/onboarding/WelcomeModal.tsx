@@ -8,8 +8,8 @@ const KEY = "gasolisto_onboarding_visto";
 const FUNCIONES = [
   {
     Icon: Map,
-    titulo: "Precios oficiales cerca de ti",
-    texto: "Consulta gasolina, diésel y GLP con datos públicos del MITECO.",
+    titulo: "Ubicación o busca tu ciudad",
+    texto: "Permite ubicación o usa la lupa para comparar precios en cualquier zona de España.",
   },
   {
     Icon: Star,
