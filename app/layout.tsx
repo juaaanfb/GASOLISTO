@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import { PostHogProvider } from "@/components/PostHogProvider";
 import { PwaRegister } from "@/components/PwaRegister";
 import { SITE_URL } from "@/lib/site";
 
@@ -97,9 +98,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="antialiased">
-        {children}
-        <PwaRegister />
-        <Analytics />
+        <PostHogProvider>
+          {children}
+          <PwaRegister />
+          <Analytics />
+        </PostHogProvider>
       </body>
     </html>
   );
