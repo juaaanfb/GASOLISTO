@@ -67,6 +67,9 @@ export default function HomePage() {
   const [busqueda, setBusqueda] = useState("");
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [hintMapaVisible, setHintMapaVisible] = useState(false);
+  const [cargaInicialLenta, setCargaInicialLenta] = useState(false);
+  // Rearma el temporizador si se reintenta mientras la carga sigue activa.
+  const [reintentoNonce, setReintentoNonce] = useState(0);
   useEffect(() => {
     try {
       if (!localStorage.getItem(HINT_MAPA_KEY)) setHintMapaVisible(true);
@@ -137,6 +140,16 @@ export default function HomePage() {
   const stats = useEstadisticas(filtradas, filtros);
   const { favoritas, toggleFavorita } = useFavoritas();
   const { alertas, resumenDiario, guardarAlerta, eliminarAlerta, obtenerAlerta, setResumenDiario } = useAlertas();
+
+  useEffect(() => {
+    if (!cargando) {
+      setCargaInicialLenta(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => setCargaInicialLenta(true), 8500);
+    return () => window.clearTimeout(timer);
+  }, [cargando, reintentoNonce]);
 
   const {
     pantalla,
@@ -212,6 +225,12 @@ export default function HomePage() {
   const mostrarBanner = !bannerDismissed && hidratado && (
     alertasDisparadas.length > 0 || (resumenDiario && !!precioMasBarata)
   );
+
+  const enfocarBuscadorZona = () => {
+    document
+      .querySelector<HTMLInputElement>('input[placeholder="Busca ciudad o zona"]')
+      ?.focus();
+  };
 
   // Notificación del navegador (una vez por sesión)
   const notifFiredRef = useRef(false);
@@ -362,9 +381,48 @@ export default function HomePage() {
             spinner para el mismo estado). */}
         {cargando && tabActiva === "mapa" && pantalla === null && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80" style={{ zIndex: 500 }}>
-            <div className="bg-white rounded-2xl shadow-card-hover px-4 py-3 flex items-center gap-2.5">
-              <Spinner className="w-4 h-4" />
-              <p className="text-xs text-gray-600">Cargando gasolineras de España…</p>
+            <div className="bg-white rounded-2xl shadow-card-hover px-4 py-3 mx-4 max-w-xs">
+              <div className="flex items-center justify-center gap-2.5">
+                <Spinner className="w-4 h-4" />
+                <div className="text-left">
+                  <p className="text-xs font-medium text-gray-700">Cargando precios oficiales del MITECO…</p>
+                  {!cargaInicialLenta && (
+                    <p className="mt-0.5 text-[11px] text-gray-400">
+                      Buscando gasolineras y precios actualizados cerca de ti.
+                    </p>
+                  )}
+                </div>
+              </div>
+              {cargaInicialLenta && (
+                <div className="mt-3 border-t border-gray-100 pt-3 text-center">
+                  <p className="text-xs font-semibold text-gray-700">
+                    Está tardando más de lo normal
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500 leading-snug">
+                    Seguimos consultando los precios oficiales. Puedes esperar unos segundos o intentarlo de nuevo.
+                  </p>
+                  <div className="mt-3 flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCargaInicialLenta(false);
+                        setReintentoNonce((n) => n + 1);
+                        refetch();
+                      }}
+                      className="rounded-full bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
+                    >
+                      Reintentar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={enfocarBuscadorZona}
+                      className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                    >
+                      Buscar ciudad
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -406,7 +464,12 @@ export default function HomePage() {
           <div className="absolute top-3 left-1/2 -translate-x-1/2 px-4 w-full" style={{ zIndex: 500 }}>
             <div className="bg-white rounded-2xl shadow-card-hover border border-red-100 px-4 py-3 flex items-center gap-2.5">
               <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-              <p className="text-xs text-gray-600 flex-1">{error}</p>
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-gray-700">No hemos podido cargar los precios</p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Puede ser un problema temporal al consultar los datos oficiales. Prueba de nuevo en unos segundos.
+                </p>
+              </div>
               <button
                 onClick={refetch}
                 className="text-xs font-semibold text-green-600 hover:text-green-700 flex-shrink-0"
