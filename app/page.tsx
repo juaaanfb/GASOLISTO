@@ -504,26 +504,28 @@ export default function HomePage() {
         )}
 
         {/* Texto SEO discreto: en móvil queda solo para lectores/crawlers para
-            no invadir el mapa; en escritorio aparece como panel informativo. */}
-        <section
-          aria-labelledby="seo-home-title"
-          className="sr-only lg:not-sr-only lg:absolute lg:left-4 lg:bottom-4 lg:z-[450] lg:max-w-md lg:rounded-2xl lg:border lg:border-gray-200 lg:bg-white/90 lg:p-4 lg:shadow-card lg:backdrop-blur-sm"
-        >
-          <h2 id="seo-home-title" className="text-sm font-bold text-gray-900">
-            Comparador de gasolineras en España
-          </h2>
-          <p className="mt-1.5 text-xs leading-relaxed text-gray-600">
-            {SEO_HOME_TEXT}
-          </p>
-          <nav aria-label="Enlaces sobre Gasolisto" className="mt-2 flex gap-3 text-xs font-medium">
-            <Link href="/como-funciona" className="text-green-700 hover:text-green-800 underline underline-offset-2">
-              Cómo funciona
-            </Link>
-            <Link href="/privacidad" className="text-gray-500 hover:text-gray-700 underline underline-offset-2">
-              Privacidad
-            </Link>
-          </nav>
-        </section>
+            no invadir el mapa; en escritorio aparece solo sobre el mapa. */}
+        {tabActiva === "mapa" && pantalla === null && (
+          <section
+            aria-labelledby="seo-home-title"
+            className="sr-only lg:not-sr-only lg:absolute lg:left-4 lg:bottom-4 lg:z-[450] lg:max-w-md lg:rounded-2xl lg:border lg:border-gray-200 lg:bg-white/90 lg:p-4 lg:shadow-card lg:backdrop-blur-sm"
+          >
+            <h2 id="seo-home-title" className="text-sm font-bold text-gray-900">
+              Comparador de gasolineras en España
+            </h2>
+            <p className="mt-1.5 text-xs leading-relaxed text-gray-600">
+              {SEO_HOME_TEXT}
+            </p>
+            <nav aria-label="Enlaces sobre Gasolisto" className="mt-2 flex gap-3 text-xs font-medium">
+              <Link href="/como-funciona" className="text-green-700 hover:text-green-800 underline underline-offset-2">
+                Cómo funciona
+              </Link>
+              <Link href="/privacidad" className="text-gray-500 hover:text-gray-700 underline underline-offset-2">
+                Privacidad
+              </Link>
+            </nav>
+          </section>
+        )}
       </div>
 
       {/* BottomSheet para lista, detalle y vehículos */}
