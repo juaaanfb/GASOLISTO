@@ -11,6 +11,7 @@ import { AutocompleteInput } from "@/components/trip/AutocompleteInput";
 import type { LugarSugerido } from "@/lib/geocoding";
 import { MARCAS, type Marca } from "@/lib/marcas";
 import { cn } from "@/lib/utils";
+import { track, bucketDistanciaRuta } from "@/lib/analytics";
 
 function urlGoogleMaps(plan: PlanViaje): string {
   const coord = (c: Coordenadas) => `${c.lat},${c.lng}`;
@@ -112,6 +113,13 @@ export function TripPlanner({
         marcaPreferida
       );
       setPlan(resultado);
+      track("trip_calculated", {
+        distance_bucket: bucketDistanciaRuta(resultado.distanciaKm),
+        stops_count: resultado.paradas.length,
+        fuel_type: combustible,
+        has_preferred_brand: marcaPreferida !== null,
+        has_custom_origin: origenTexto.trim().length > 0,
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "";
       if (msg === "SIN_GASOLINERAS" && marcaPreferida) {

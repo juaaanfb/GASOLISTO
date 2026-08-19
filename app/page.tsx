@@ -8,7 +8,7 @@ import { DescuentosForm } from "@/components/discounts/DescuentosForm";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { StationList } from "@/components/list/StationList";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { NavBar } from "@/components/ui/NavBar";
+import { NavBar, type TabActiva } from "@/components/ui/NavBar";
 import { StationDetail } from "@/components/station/StationDetail";
 import { VehicleSelector } from "@/components/vehicle/VehicleSelector";
 import { VehicleForm } from "@/components/vehicle/VehicleForm";
@@ -25,7 +25,9 @@ import { obtenerPrecio } from "@/lib/calculos";
 import { FEEDBACK_FORM_URL } from "@/lib/site";
 import { normalizarTexto } from "@/lib/utils";
 import { buscarLugares, type LugarSugerido } from "@/lib/geocoding";
-import type { Filtros, Coordenadas } from "@/types";
+import { detectarMarca } from "@/lib/marcas";
+import { track, bucketDistanciaEstacion, radioComoTexto } from "@/lib/analytics";
+import type { Filtros, Coordenadas, Gasolinera } from "@/types";
 
 const MapView = dynamic(
   () => import("@/components/map/MapView").then((m) => m.MapView),
@@ -99,6 +101,14 @@ export default function HomePage() {
     if (v.trim() === "") setZonaActiva(null);
   };
   const seleccionarZona = (lugar: LugarSugerido) => {
+    // query_length = lo que el usuario había escrito antes de elegir la
+    // sugerencia, no la etiqueta completa del resultado (que puede ser
+    // mucho más larga, p.ej. "Comarca de..., Comunitat Valenciana").
+    track("city_search_submitted", {
+      method: "suggestion",
+      query_length: zonaTexto.trim().length,
+      has_results: true,
+    });
     setZonaTexto(lugar.label);
     setZonaActiva({ label: lugar.label, coords: { lat: lugar.lat, lng: lugar.lng } });
     setErrorZona(null);
@@ -113,8 +123,10 @@ export default function HomePage() {
       if (!primero) throw new Error("NO_ENCONTRADO");
       setZonaActiva({ label: primero.label, coords: { lat: primero.lat, lng: primero.lng } });
       setZonaTexto(primero.label);
+      track("city_search_submitted", { method: "enter", query_length: q.length, has_results: true });
     } catch {
       setErrorZona("No se encontró esa ciudad o zona. Prueba con otro nombre.");
+      track("city_search_submitted", { method: "enter", query_length: q.length, has_results: false });
     } finally {
       setBuscandoZona(false);
     }
@@ -167,6 +179,85 @@ export default function HomePage() {
     cerrarVehiculos,
     cerrarPantallaSecundaria,
   } = useNavigation({ vehiculos, guardarVehiculo, eliminarVehiculo, seleccionarVehiculo, crearVehiculo, setFiltros });
+
+  // Cambios de filtro (combustible, radio, solo favoritas). Se compara
+  // contra el valor previo para saber qué cambió y evitar disparar el
+  // evento cuando el valor "nuevo" coincide con el actual.
+  const handleFiltrosChange = (nuevos: Filtros) => {
+    if (nuevos.combustible !== filtros.combustible) {
+      track("filter_changed", {
+        filter_name: "combustible",
+        from: filtros.combustible,
+        to: nuevos.combustible,
+        fuel_type: nuevos.combustible,
+        radius: radioComoTexto(nuevos.radio),
+      });
+    }
+    if (nuevos.radio !== filtros.radio) {
+      track("filter_changed", {
+        filter_name: "radio",
+        from: radioComoTexto(filtros.radio),
+        to: radioComoTexto(nuevos.radio),
+        fuel_type: nuevos.combustible,
+        radius: radioComoTexto(nuevos.radio),
+      });
+    }
+    setFiltros(nuevos);
+  };
+  const handleToggleSoloFavoritas = () => {
+    track("filter_changed", {
+      filter_name: "solo_favoritas",
+      from: soloFavoritas,
+      to: !soloFavoritas,
+      fuel_type: filtros.combustible,
+      radius: radioComoTexto(filtros.radio),
+    });
+    setSoloFavoritas((v) => !v);
+  };
+
+  // Cambios de vista (Mapa/Lista/Viaje/Vehículo). Centralizado aquí porque
+  // hay varios puntos de entrada (NavBar, botón "Ver lista", cerrar la
+  // Lista deslizando, "Cambiar vehículo" desde Viaje...) y todos deben
+  // contar como el mismo tipo de evento sin duplicarlo entre sí.
+  const handleTabChangeConTracking = (tab: TabActiva) => {
+    if (tab !== tabActiva) {
+      track("view_changed", { from: tabActiva, to: tab });
+      if (tab === "viaje") {
+        track("trip_planner_opened", {
+          has_vehicle: hidratado && !!vehiculoActivo,
+          fuel_type: filtros.combustible,
+        });
+      }
+    }
+    handleTabChange(tab);
+  };
+
+  // Selección de gasolinera desde mapa o lista: mismo evento, distinta
+  // fuente, para poder comparar qué vía se usa más.
+  const trackStationSelected = (g: Gasolinera, source: "map" | "list") => {
+    track("station_selected", {
+      source,
+      station_id: g.id,
+      brand: detectarMarca(g.nombre) ?? "unknown",
+      fuel_type: filtros.combustible,
+      price_available: obtenerPrecio(g, filtros.combustible) !== undefined,
+      distance_bucket: bucketDistanciaEstacion(g.distancia),
+    });
+  };
+  const handleSelectFromMap = (g: Gasolinera) => { trackStationSelected(g, "map"); handleSelect(g); };
+  const handleSelectFromList = (g: Gasolinera) => { trackStationSelected(g, "list"); handleSelect(g); };
+
+  // Favoritas: se consulta el estado ANTES de togglear para saber si la
+  // acción fue añadir o quitar.
+  const handleToggleFavorita = (id: string) => {
+    const g = filtradas.find((x) => x.id === id) ?? todas.find((x) => x.id === id);
+    track("favorite_toggled", {
+      action: favoritas.has(id) ? "removed" : "added",
+      station_id: id,
+      brand: g ? detectarMarca(g.nombre) ?? "unknown" : "unknown",
+    });
+    toggleFavorita(id);
+  };
 
   // Gasolineras a mostrar en la lista (filtradas por favoritas si aplica)
   const gasolinerasMostradas = useMemo(
@@ -280,6 +371,7 @@ export default function HomePage() {
             href={FEEDBACK_FORM_URL}
             target="_blank"
             rel="noreferrer"
+            onClick={() => track("feedback_clicked", { surface: "header" })}
             aria-label="Enviar feedback sobre Gasolisto"
             className="p-1 rounded-full hover:bg-gray-100 transition-colors"
           >
@@ -340,9 +432,9 @@ export default function HomePage() {
       {/* Filtros siempre visibles */}
       <FilterBar
         filtros={filtros}
-        onChange={setFiltros}
+        onChange={handleFiltrosChange}
         soloFavoritas={soloFavoritas}
-        onToggleSoloFavoritas={() => setSoloFavoritas((v) => !v)}
+        onToggleSoloFavoritas={handleToggleSoloFavoritas}
       />
 
       {/* Microayuda de primera vista: qué hacer con los precios del mapa */}
@@ -372,7 +464,7 @@ export default function HomePage() {
           seleccionadaId={seleccionadaId}
           activo={tabActiva === "mapa"}
           visible={tabActiva === "mapa" && pantalla === null}
-          onSelect={handleSelect}
+          onSelect={handleSelectFromMap}
         />
 
         {/* Carga inicial: sin esto el mapa se veía unos segundos sin pines,
@@ -488,7 +580,7 @@ export default function HomePage() {
               todasGasolineras={todas}
               vehiculo={hidratado ? vehiculoActivo : undefined}
               combustible={filtros.combustible}
-              onAbrirVehiculos={() => handleTabChange("vehiculos")}
+              onAbrirVehiculos={() => handleTabChangeConTracking("vehiculos")}
             />
           </div>
         )}
@@ -496,7 +588,7 @@ export default function HomePage() {
         {/* Botón de ver lista — visible en vista mapa */}
         {tabActiva === "mapa" && pantalla === null && !cargando && filtradas.length > 0 && (
           <button
-            onClick={() => handleTabChange("lista")}
+            onClick={() => handleTabChangeConTracking("lista")}
             className="absolute bottom-5 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-card-hover flex items-center gap-2"
           >
             <span>Ver lista ({gasolinerasMostradas.length})</span>
@@ -532,7 +624,7 @@ export default function HomePage() {
       <BottomSheet
         abierto={tabActiva === "lista" || pantalla !== null}
         onClose={tabActiva === "lista" && pantalla === null
-          ? () => handleTabChange("mapa")
+          ? () => handleTabChangeConTracking("mapa")
           : undefined
         }
         altura={
@@ -558,8 +650,8 @@ export default function HomePage() {
               descuentos={descuentos}
               busqueda={busqueda}
               onBusquedaChange={setBusqueda}
-              onSelect={handleSelect}
-              onToggleFavorita={toggleFavorita}
+              onSelect={handleSelectFromList}
+              onToggleFavorita={handleToggleFavorita}
               onRefetch={refetch}
             />
           </div>
@@ -574,7 +666,7 @@ export default function HomePage() {
             vehiculo={hidratado ? vehiculoActivo : undefined}
             descuentos={descuentos}
             esFavorita={favoritas.has(gasolineraSeleccionada.id)}
-            onToggleFavorita={() => toggleFavorita(gasolineraSeleccionada.id)}
+            onToggleFavorita={() => handleToggleFavorita(gasolineraSeleccionada.id)}
             alerta={obtenerAlerta(gasolineraSeleccionada.id)}
             onGuardarAlerta={guardarAlerta}
             onEliminarAlerta={() => eliminarAlerta(gasolineraSeleccionada.id)}
@@ -603,7 +695,7 @@ export default function HomePage() {
             esNuevo={esVehiculoNuevo}
             onGuardar={handleGuardarVehiculo}
             onEliminar={!esVehiculoNuevo && vehiculoEditando.id !== "default" ? handleEliminarVehiculo : undefined}
-            onCancelar={() => handleTabChange("vehiculos")}
+            onCancelar={() => handleTabChangeConTracking("vehiculos")}
           />
         )}
       </BottomSheet>
@@ -611,7 +703,7 @@ export default function HomePage() {
       {/* Barra de navegación inferior */}
       <NavBar
         tabActiva={tabActiva}
-        onChange={handleTabChange}
+        onChange={handleTabChangeConTracking}
         aviso={errorGeo}
       />
 

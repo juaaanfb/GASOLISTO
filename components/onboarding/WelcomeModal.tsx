@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Map, Star, Bell, Car, Percent, Route, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { FEEDBACK_FORM_URL } from "@/lib/site";
+import { track } from "@/lib/analytics";
 
 const KEY = "gasolisto_onboarding_visto";
 
@@ -116,6 +117,7 @@ export function WelcomeModal({ onCerrar }: WelcomeModalProps) {
               href={FEEDBACK_FORM_URL}
               target="_blank"
               rel="noreferrer"
+              onClick={() => track("feedback_clicked", { surface: "welcome_modal" })}
               className="hover:text-gray-600 underline underline-offset-2"
             >
               Feedback
