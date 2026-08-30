@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import type { Coordenadas } from "@/types";
+import { track, bucketPrecisionGeo } from "@/lib/analytics";
 
 // Madrid centro como fallback si el usuario deniega la geolocalización
 const MADRID_CENTRO: Coordenadas = { lat: 40.4168, lng: -3.7038 };
@@ -22,6 +23,7 @@ export function useGeolocation(): EstadoGeolocalizacion {
 
   useEffect(() => {
     if (!navigator.geolocation) {
+      track("geolocation_denied", { reason: "unsupported" });
       setEstado({
         coordenadas: MADRID_CENTRO,
         cargando: false,
@@ -31,8 +33,13 @@ export function useGeolocation(): EstadoGeolocalizacion {
       return;
     }
 
+    track("geolocation_requested");
+
     navigator.geolocation.getCurrentPosition(
       (posicion) => {
+        track("geolocation_allowed", {
+          accuracy_bucket: bucketPrecisionGeo(posicion.coords.accuracy),
+        });
         setEstado({
           coordenadas: {
             lat: posicion.coords.latitude,
@@ -51,6 +58,15 @@ export function useGeolocation(): EstadoGeolocalizacion {
           2: "No se pudo obtener tu ubicación.",
           3: "Tiempo de espera agotado obteniendo tu ubicación.",
         };
+        // "denied" cubre las tres causas (permiso, GPS sin señal, timeout):
+        // de cara al embudo lo que importa es que no hubo ubicación real;
+        // "reason" da el matiz para quien quiera diferenciar el motivo.
+        const razones: Record<number, string> = {
+          1: "permission_denied",
+          2: "position_unavailable",
+          3: "timeout",
+        };
+        track("geolocation_denied", { reason: razones[err.code] ?? "unknown" });
         setEstado({
           coordenadas: MADRID_CENTRO,
           cargando: false,

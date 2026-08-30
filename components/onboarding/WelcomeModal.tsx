@@ -117,7 +117,7 @@ export function WelcomeModal({ onCerrar }: WelcomeModalProps) {
               href={FEEDBACK_FORM_URL}
               target="_blank"
               rel="noreferrer"
-              onClick={() => track("feedback_clicked", { surface: "welcome_modal" })}
+              onClick={() => track("feedback_opened", { surface: "welcome_modal" })}
               className="hover:text-gray-600 underline underline-offset-2"
             >
               Feedback

@@ -94,24 +94,34 @@ export default function HomePage() {
   const [zonaActiva, setZonaActiva] = useState<{ label: string; coords: Coordenadas } | null>(null);
   const [buscandoZona, setBuscandoZona] = useState(false);
   const [errorZona, setErrorZona] = useState<string | null>(null);
+  // Marca si ya se avisó "empezó a buscar" para esta tanda de texto, para
+  // no disparar city_search_started en cada tecla — solo en la transición
+  // vacío → con texto, una vez por búsqueda.
+  const busquedaZonaIniciadaRef = useRef(false);
 
   const cambiarZonaTexto = (v: string) => {
+    if (v.trim() !== "" && !busquedaZonaIniciadaRef.current) {
+      busquedaZonaIniciadaRef.current = true;
+      track("city_search_started");
+    }
     setZonaTexto(v);
     setErrorZona(null);
-    if (v.trim() === "") setZonaActiva(null);
+    if (v.trim() === "") {
+      setZonaActiva(null);
+      busquedaZonaIniciadaRef.current = false;
+    }
   };
   const seleccionarZona = (lugar: LugarSugerido) => {
-    // query_length = lo que el usuario había escrito antes de elegir la
-    // sugerencia, no la etiqueta completa del resultado (que puede ser
-    // mucho más larga, p.ej. "Comarca de..., Comunitat Valenciana").
-    track("city_search_submitted", {
+    track("city_search_selected", {
       method: "suggestion",
       query_length: zonaTexto.trim().length,
-      has_results: true,
+      city: lugar.city ?? null,
+      province: lugar.province ?? null,
     });
     setZonaTexto(lugar.label);
     setZonaActiva({ label: lugar.label, coords: { lat: lugar.lat, lng: lugar.lng } });
     setErrorZona(null);
+    busquedaZonaIniciadaRef.current = false;
   };
   const buscarZona = async () => {
     const q = zonaTexto.trim();
@@ -123,10 +133,15 @@ export default function HomePage() {
       if (!primero) throw new Error("NO_ENCONTRADO");
       setZonaActiva({ label: primero.label, coords: { lat: primero.lat, lng: primero.lng } });
       setZonaTexto(primero.label);
-      track("city_search_submitted", { method: "enter", query_length: q.length, has_results: true });
+      track("city_search_selected", {
+        method: "enter",
+        query_length: q.length,
+        city: primero.city ?? null,
+        province: primero.province ?? null,
+      });
+      busquedaZonaIniciadaRef.current = false;
     } catch {
       setErrorZona("No se encontró esa ciudad o zona. Prueba con otro nombre.");
-      track("city_search_submitted", { method: "enter", query_length: q.length, has_results: false });
     } finally {
       setBuscandoZona(false);
     }
@@ -135,6 +150,7 @@ export default function HomePage() {
     setZonaActiva(null);
     setZonaTexto("");
     setErrorZona(null);
+    busquedaZonaIniciadaRef.current = false;
   };
   // Primer tramo de la etiqueta ("Valencia, Comunidad Valenciana" → "Valencia")
   // para textos cortos (contador, pill) sin repetir la dirección completa.
@@ -185,32 +201,32 @@ export default function HomePage() {
   // evento cuando el valor "nuevo" coincide con el actual.
   const handleFiltrosChange = (nuevos: Filtros) => {
     if (nuevos.combustible !== filtros.combustible) {
-      track("filter_changed", {
-        filter_name: "combustible",
+      track("fuel_changed", {
         from: filtros.combustible,
         to: nuevos.combustible,
-        fuel_type: nuevos.combustible,
-        radius: radioComoTexto(nuevos.radio),
+        radius_km: nuevos.radio,
       });
     }
     if (nuevos.radio !== filtros.radio) {
-      track("filter_changed", {
-        filter_name: "radio",
+      track("radius_changed", {
         from: radioComoTexto(filtros.radio),
         to: radioComoTexto(nuevos.radio),
+        radius_km: nuevos.radio,
         fuel_type: nuevos.combustible,
-        radius: radioComoTexto(nuevos.radio),
       });
     }
     setFiltros(nuevos);
   };
+  // No forma parte del embudo mínimo pedido, pero es la misma mecánica de
+  // filtro ya existente y de bajo riesgo — se mantiene con nombre propio
+  // para no confundirla con favorite_added/favorite_removed (que son sobre
+  // una gasolinera, no sobre el filtro de la lista).
   const handleToggleSoloFavoritas = () => {
-    track("filter_changed", {
-      filter_name: "solo_favoritas",
+    track("favorites_filter_toggled", {
       from: soloFavoritas,
       to: !soloFavoritas,
       fuel_type: filtros.combustible,
-      radius: radioComoTexto(filtros.radio),
+      radius_km: filtros.radio,
     });
     setSoloFavoritas((v) => !v);
   };
@@ -234,30 +250,37 @@ export default function HomePage() {
 
   // Selección de gasolinera desde mapa o lista: mismo evento, distinta
   // fuente, para poder comparar qué vía se usa más.
-  const trackStationSelected = (g: Gasolinera, source: "map" | "list") => {
+  const trackStationSelected = (g: Gasolinera, source_tab: "map" | "list") => {
     track("station_selected", {
-      source,
+      source_tab,
       station_id: g.id,
-      brand: detectarMarca(g.nombre) ?? "unknown",
+      station_brand: detectarMarca(g.nombre) ?? "unknown",
       fuel_type: filtros.combustible,
       price_available: obtenerPrecio(g, filtros.combustible) !== undefined,
       distance_bucket: bucketDistanciaEstacion(g.distancia),
+      city: g.localidad,
+      province: g.provincia,
     });
   };
   const handleSelectFromMap = (g: Gasolinera) => { trackStationSelected(g, "map"); handleSelect(g); };
   const handleSelectFromList = (g: Gasolinera) => { trackStationSelected(g, "list"); handleSelect(g); };
 
   // Favoritas: se consulta el estado ANTES de togglear para saber si la
-  // acción fue añadir o quitar.
-  const handleToggleFavorita = (id: string) => {
+  // acción fue añadir o quitar. favorite_removed no está en el embudo
+  // mínimo pedido pero es la misma acción con el resultado contrario, así
+  // que se registra igual para no perder la mitad de la señal.
+  const trackFavoriteToggle = (id: string, source_tab: "map" | "list" | "detail") => {
     const g = filtradas.find((x) => x.id === id) ?? todas.find((x) => x.id === id);
-    track("favorite_toggled", {
-      action: favoritas.has(id) ? "removed" : "added",
+    const propiedades = {
       station_id: id,
-      brand: g ? detectarMarca(g.nombre) ?? "unknown" : "unknown",
-    });
+      station_brand: g ? detectarMarca(g.nombre) ?? "unknown" : "unknown",
+      source_tab,
+    };
+    track(favoritas.has(id) ? "favorite_removed" : "favorite_added", propiedades);
     toggleFavorita(id);
   };
+  const handleToggleFavoritaLista = (id: string) => trackFavoriteToggle(id, "list");
+  const handleToggleFavoritaDetalle = (id: string) => trackFavoriteToggle(id, "detail");
 
   // Gasolineras a mostrar en la lista (filtradas por favoritas si aplica)
   const gasolinerasMostradas = useMemo(
@@ -371,7 +394,7 @@ export default function HomePage() {
             href={FEEDBACK_FORM_URL}
             target="_blank"
             rel="noreferrer"
-            onClick={() => track("feedback_clicked", { surface: "header" })}
+            onClick={() => track("feedback_opened", { surface: "header" })}
             aria-label="Enviar feedback sobre Gasolisto"
             className="p-1 rounded-full hover:bg-gray-100 transition-colors"
           >
@@ -651,7 +674,7 @@ export default function HomePage() {
               busqueda={busqueda}
               onBusquedaChange={setBusqueda}
               onSelect={handleSelectFromList}
-              onToggleFavorita={handleToggleFavorita}
+              onToggleFavorita={handleToggleFavoritaLista}
               onRefetch={refetch}
             />
           </div>
@@ -666,7 +689,7 @@ export default function HomePage() {
             vehiculo={hidratado ? vehiculoActivo : undefined}
             descuentos={descuentos}
             esFavorita={favoritas.has(gasolineraSeleccionada.id)}
-            onToggleFavorita={() => handleToggleFavorita(gasolineraSeleccionada.id)}
+            onToggleFavorita={() => handleToggleFavoritaDetalle(gasolineraSeleccionada.id)}
             alerta={obtenerAlerta(gasolineraSeleccionada.id)}
             onGuardarAlerta={guardarAlerta}
             onEliminarAlerta={() => eliminarAlerta(gasolineraSeleccionada.id)}

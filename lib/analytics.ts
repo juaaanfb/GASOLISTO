@@ -43,3 +43,15 @@ export function bucketDistanciaRuta(km: number): string {
 export function radioComoTexto(radio: number | null): string {
   return radio === null ? "sin_limite" : String(radio);
 }
+
+// Bucket de precisión del GPS (metros) devuelta por la Geolocation API.
+// Nunca se envían las coordenadas en sí, solo esta franja de precisión —
+// útil para saber si el fallback a "poca precisión" es habitual, sin
+// exponer dónde está el usuario.
+export function bucketPrecisionGeo(metros: number): string {
+  if (metros < 50) return "0_50";
+  if (metros < 100) return "50_100";
+  if (metros < 500) return "100_500";
+  if (metros < 1000) return "500_1000";
+  return "1000_plus";
+}

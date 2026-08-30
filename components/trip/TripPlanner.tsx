@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { MapPin, Navigation, Navigation2, ExternalLink, Car, Fuel, LocateFixed } from "lucide-react";
 import type { Coordenadas, Gasolinera, Vehiculo, TipoCombustible } from "@/types";
@@ -80,9 +80,25 @@ export function TripPlanner({
 
   const usarMiUbicacion = useCallback(() => setOrigenTexto(""), []);
 
+  // Igual que en la búsqueda de ciudad de la home: se marca "empezó" solo
+  // en la transición vacío → con texto, una vez por búsqueda de destino.
+  const busquedaDestinoIniciadaRef = useRef(false);
   const cambiarDestinoTexto = useCallback((v: string) => {
+    if (v.trim() !== "" && !busquedaDestinoIniciadaRef.current) {
+      busquedaDestinoIniciadaRef.current = true;
+      track("trip_search_started");
+    }
     setDestinoTexto(v);
     setDestinoCoords(null);
+    if (v.trim() === "") busquedaDestinoIniciadaRef.current = false;
+  }, []);
+  const seleccionarDestino = useCallback((lugar: LugarSugerido) => {
+    setDestinoCoords({ lat: lugar.lat, lng: lugar.lng });
+    track("trip_result_selected", {
+      city: lugar.city ?? null,
+      province: lugar.province ?? null,
+    });
+    busquedaDestinoIniciadaRef.current = false;
   }, []);
 
   const calcular = useCallback(async () => {
@@ -115,7 +131,7 @@ export function TripPlanner({
       setPlan(resultado);
       track("trip_calculated", {
         distance_bucket: bucketDistanciaRuta(resultado.distanciaKm),
-        stops_count: resultado.paradas.length,
+        result_count: resultado.paradas.length,
         fuel_type: combustible,
         has_preferred_brand: marcaPreferida !== null,
         has_custom_origin: origenTexto.trim().length > 0,
@@ -160,7 +176,7 @@ export function TripPlanner({
         <AutocompleteInput
           value={destinoTexto}
           onChange={cambiarDestinoTexto}
-          onSeleccionar={(lugar: LugarSugerido) => setDestinoCoords({ lat: lugar.lat, lng: lugar.lng })}
+          onSeleccionar={seleccionarDestino}
           onKeyDown={(e) => e.key === "Enter" && calcular()}
           placeholder="¿A dónde vas?"
           icon={<MapPin className="w-4 h-4" />}
@@ -312,13 +328,24 @@ export function TripPlanner({
           )}
 
           <div className="flex gap-2">
-            <a href={urlGoogleMaps(plan)} target="_blank" rel="noopener noreferrer" className="flex-1">
+            <a
+              href={urlGoogleMaps(plan)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track("maps_route_clicked", { source: "trip_planner", provider: "google", fuel_type: combustible })}
+              className="flex-1"
+            >
               <Button variante="primario" className="w-full gap-1.5">
                 <Navigation2 className="w-4 h-4" />
                 Iniciar en Google Maps
               </Button>
             </a>
-            <a href={urlAppleMaps(plan)} target="_blank" rel="noopener noreferrer">
+            <a
+              href={urlAppleMaps(plan)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track("maps_route_clicked", { source: "trip_planner", provider: "apple", fuel_type: combustible })}
+            >
               <Button variante="secundario" className="gap-1.5">
                 <ExternalLink className="w-4 h-4" />
                 Apple

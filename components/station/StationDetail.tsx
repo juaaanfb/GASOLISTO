@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/Badge";
 import type { Gasolinera, Vehiculo, TipoCombustible } from "@/types";
 import { COMBUSTIBLES } from "@/types";
 import { calcularAhorro, calcularEstadisticas, clasificarPrecio, obtenerPrecio, formatPrecio, formatEuros } from "@/lib/calculos";
-import { precioConDescuento } from "@/lib/marcas";
+import { precioConDescuento, detectarMarca } from "@/lib/marcas";
 import { cn, formatDireccion } from "@/lib/utils";
+import { track } from "@/lib/analytics";
 import type { AlertaConfig } from "@/hooks/useAlertas";
 import type { Descuentos } from "@/hooks/useDescuentos";
 
@@ -141,6 +142,15 @@ export function StationDetail({
 
   const urlGoogleMaps = `https://www.google.com/maps/dir/?api=1&destination=${gasolinera.latitud},${gasolinera.longitud}`;
   const urlAppleMaps = `https://maps.apple.com/?daddr=${gasolinera.latitud},${gasolinera.longitud}`;
+
+  const trackMapsClick = (provider: "google" | "apple") => {
+    track("maps_route_clicked", {
+      source: "station_detail",
+      provider,
+      station_brand: detectarMarca(gasolinera.nombre) ?? "unknown",
+      fuel_type: combustibleActivo,
+    });
+  };
 
   const { estado, etiqueta } = parsearHorario(gasolinera.horario);
 
@@ -405,13 +415,13 @@ export function StationDetail({
 
       {/* Botones de navegación */}
       <div className="p-4 border-t border-gray-100 flex gap-2">
-        <a href={urlGoogleMaps} target="_blank" rel="noopener noreferrer" className="flex-1">
+        <a href={urlGoogleMaps} target="_blank" rel="noopener noreferrer" onClick={() => trackMapsClick("google")} className="flex-1">
           <Button variante="primario" className="w-full gap-1.5">
             <Navigation2 className="w-4 h-4" />
             Google Maps
           </Button>
         </a>
-        <a href={urlAppleMaps} target="_blank" rel="noopener noreferrer">
+        <a href={urlAppleMaps} target="_blank" rel="noopener noreferrer" onClick={() => trackMapsClick("apple")}>
           <Button variante="secundario" className="gap-1.5">
             <ExternalLink className="w-4 h-4" />
             Apple

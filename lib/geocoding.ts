@@ -4,6 +4,10 @@ export interface LugarSugerido {
   label: string;
   lat: number;
   lng: number;
+  // Para analítica: ciudad/provincia en vez de coordenadas exactas.
+  // Ausentes si el resultado no las trae (p.ej. una región amplia).
+  city?: string;
+  province?: string;
 }
 
 const PHOTON_URL = "https://photon.komoot.io/api/";
@@ -87,6 +91,8 @@ export async function buscarLugares(
       label: etiquetaLugar(f.properties),
       lat: f.geometry.coordinates[1],
       lng: f.geometry.coordinates[0],
+      city: f.properties.city || f.properties.county,
+      province: f.properties.state,
     }))
     .filter((l) => l.label.length > 0);
 
