@@ -7,8 +7,7 @@ const CDN_FRESH_SECONDS = 5 * 60;
 const CDN_STALE_SECONDS = 60 * 60;
 
 const SUCCESS_HEADERS = {
-  "Cache-Control": "public, max-age=0, must-revalidate",
-  "Vercel-CDN-Cache-Control": `public, s-maxage=${CDN_FRESH_SECONDS}, stale-while-revalidate=${CDN_STALE_SECONDS}`,
+  "Cache-Control": `public, max-age=0, s-maxage=${CDN_FRESH_SECONDS}, stale-while-revalidate=${CDN_STALE_SECONDS}`,
 };
 
 const ERROR_HEADERS = {
