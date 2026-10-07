@@ -63,7 +63,7 @@ const SEO_HOME_TEXT =
   "Gasolisto es un comparador gratuito de gasolineras en España para encontrar gasolina 95, gasolina 98, diésel y GLP cerca de ti. Usa precios oficiales publicados por MITECO y ayuda a comparar el precio por litro junto al coste aproximado de llenar el depósito según tu coche. Puedes ver estaciones en mapa o lista, guardar favoritas, configurar descuentos, crear alertas y usar el planificador de viajes para encontrar paradas recomendadas donde repostar. No hace falta registrarse: tus vehículos, alertas y favoritas se guardan en tu dispositivo.";
 
 export default function HomePage() {
-  const { coordenadas, error: errorGeo, esFallback } = useGeolocation();
+  const { coordenadas, esFallback } = useGeolocation();
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
   const [soloFavoritas, setSoloFavoritas] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -427,6 +427,26 @@ export default function HomePage() {
         )}
       </div>
 
+      {esFallback && !zonaActiva && pantalla === null && (tabActiva === "mapa" || tabActiva === "lista") && (
+        <div role="status" className="bg-amber-50 border-b border-amber-100 px-4 py-2 flex items-center gap-3 flex-shrink-0">
+          <MapPin className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <p className="text-xs text-amber-800 flex-1 min-w-0">
+            No tenemos tu ubicación. Busca una ciudad para ver precios en tu zona.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              track("geolocation_fallback_search_clicked", { surface: "location_notice" });
+              enfocarBuscadorZona();
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 flex-shrink-0"
+          >
+            <Search className="w-3.5 h-3.5" />
+            Buscar ciudad
+          </button>
+        </div>
+      )}
+
       {/* Banner de alertas y resumen diario */}
       {mostrarBanner && (
         <div className="bg-amber-50 border-b border-amber-100 px-4 py-2.5 flex items-start gap-2 flex-shrink-0">
@@ -558,10 +578,6 @@ export default function HomePage() {
                 >
                   <X className="w-3 h-3" />
                 </button>
-              </div>
-            ) : esFallback ? (
-              <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-card text-xs text-amber-700 font-medium border border-amber-100 text-center">
-                Busca tu ciudad o permite ubicación para ver gasolineras cercanas
               </div>
             ) : null}
             {tabActiva === "mapa" && filtros.radio === null && (
@@ -727,7 +743,6 @@ export default function HomePage() {
       <NavBar
         tabActiva={tabActiva}
         onChange={handleTabChangeConTracking}
-        aviso={errorGeo}
       />
 
       {onboardingVisible && <WelcomeModal onCerrar={cerrarOnboarding} />}

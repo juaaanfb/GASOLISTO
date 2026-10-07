@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { X, MapPin, Clock, Navigation2, ExternalLink, Fuel, Star, Bell, BellOff } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import type { Gasolinera, Vehiculo, TipoCombustible } from "@/types";
 import { COMBUSTIBLES } from "@/types";
@@ -415,17 +414,13 @@ export function StationDetail({
 
       {/* Botones de navegación */}
       <div className="p-4 border-t border-gray-100 flex gap-2">
-        <a href={urlGoogleMaps} target="_blank" rel="noopener noreferrer" onClick={() => trackMapsClick("google")} className="flex-1">
-          <Button variante="primario" className="w-full gap-1.5">
+        <a href={urlGoogleMaps} target="_blank" rel="noopener noreferrer" onClick={() => trackMapsClick("google")} aria-label="Cómo llegar con Google Maps" title="Abrir ruta en Google Maps" className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors">
             <Navigation2 className="w-4 h-4" />
-            Google Maps
-          </Button>
+            Cómo llegar
         </a>
-        <a href={urlAppleMaps} target="_blank" rel="noopener noreferrer" onClick={() => trackMapsClick("apple")}>
-          <Button variante="secundario" className="gap-1.5">
+        <a href={urlAppleMaps} target="_blank" rel="noopener noreferrer" onClick={() => trackMapsClick("apple")} aria-label="Cómo llegar con Apple Maps" title="Abrir ruta en Apple Maps" className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium text-gray-900 bg-gray-100 hover:bg-gray-200 transition-colors">
             <ExternalLink className="w-4 h-4" />
             Apple
-          </Button>
         </a>
       </div>
     </div>
