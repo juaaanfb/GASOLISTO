@@ -63,7 +63,7 @@ const SEO_HOME_TEXT =
   "Gasolisto es un comparador gratuito de gasolineras en España para encontrar gasolina 95, gasolina 98, diésel y GLP cerca de ti. Usa precios oficiales publicados por MITECO y ayuda a comparar el precio por litro junto al coste aproximado de llenar el depósito según tu coche. Puedes ver estaciones en mapa o lista, guardar favoritas, configurar descuentos, crear alertas y usar el planificador de viajes para encontrar paradas recomendadas donde repostar. No hace falta registrarse: tus vehículos, alertas y favoritas se guardan en tu dispositivo.";
 
 export default function HomePage() {
-  const { coordenadas, esFallback } = useGeolocation();
+  const { coordenadas, esFallback, cargando: cargandoUbicacion } = useGeolocation();
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
   const [soloFavoritas, setSoloFavoritas] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -616,6 +616,7 @@ export default function HomePage() {
           <div className="absolute inset-0 overflow-y-auto bg-gray-50" style={{ zIndex: 1000 }}>
             <TripPlanner
               coordenadas={coordenadas}
+              ubicacionDisponible={!cargandoUbicacion && !esFallback}
               todasGasolineras={todas}
               vehiculo={hidratado ? vehiculoActivo : undefined}
               combustible={filtros.combustible}

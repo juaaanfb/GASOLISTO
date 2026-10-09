@@ -57,6 +57,7 @@ const ERRORES: Record<string, string> = {
 
 interface TripPlannerProps {
   coordenadas: Coordenadas;
+  ubicacionDisponible: boolean;
   todasGasolineras: Gasolinera[];
   vehiculo: Vehiculo | undefined;
   combustible: TipoCombustible;
@@ -65,6 +66,7 @@ interface TripPlannerProps {
 
 export function TripPlanner({
   coordenadas,
+  ubicacionDisponible,
   todasGasolineras,
   vehiculo,
   combustible,
@@ -77,6 +79,8 @@ export function TripPlanner({
   const [plan, setPlan] = useState<PlanViaje | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const calculandoRef = useRef(false);
+  const faltaOrigen = !ubicacionDisponible && !origenTexto.trim();
 
   const usarMiUbicacion = useCallback(() => setOrigenTexto(""), []);
 
@@ -102,10 +106,16 @@ export function TripPlanner({
   }, []);
 
   const calcular = useCallback(async () => {
-    if (!destinoTexto.trim() || !vehiculo) return;
+    if (!destinoTexto.trim() || !vehiculo || faltaOrigen || calculandoRef.current) return;
+    calculandoRef.current = true;
     setCargando(true);
     setError(null);
     setPlan(null);
+    track("trip_calculation_started", {
+      has_custom_origin: origenTexto.trim().length > 0,
+      fuel_type: combustible,
+      has_preferred_brand: marcaPreferida !== null,
+    });
     try {
       let origen = coordenadas;
       if (origenTexto.trim()) {
@@ -138,6 +148,9 @@ export function TripPlanner({
       });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "";
+      track("trip_calculation_failed", {
+        reason: Object.hasOwn(ERRORES, msg) ? msg : "UNKNOWN",
+      });
       if (msg === "SIN_GASOLINERAS" && marcaPreferida) {
         const nombreMarca = MARCAS.find((m) => m.marca === marcaPreferida)?.nombre;
         setError(`No hay gasolineras ${nombreMarca} en la ruta. Prueba con "Cualquier marca".`);
@@ -145,9 +158,10 @@ export function TripPlanner({
         setError(ERRORES[msg] ?? "Error al planificar el viaje. Inténtalo de nuevo.");
       }
     } finally {
+      calculandoRef.current = false;
       setCargando(false);
     }
-  }, [origenTexto, destinoTexto, destinoCoords, marcaPreferida, vehiculo, coordenadas, todasGasolineras, combustible]);
+  }, [origenTexto, destinoTexto, destinoCoords, marcaPreferida, vehiculo, coordenadas, todasGasolineras, combustible, faltaOrigen]);
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-10">
@@ -159,9 +173,9 @@ export function TripPlanner({
         <AutocompleteInput
           value={origenTexto}
           onChange={setOrigenTexto}
-          placeholder="Tu ubicación actual"
+          placeholder={ubicacionDisponible ? "Tu ubicación actual" : "Escribe el origen"}
           icon={<LocateFixed className="w-4 h-4" />}
-          action={origenTexto ? { label: "Mi ubicación", onClick: usarMiUbicacion } : undefined}
+          action={ubicacionDisponible && origenTexto ? { label: "Mi ubicación", onClick: usarMiUbicacion } : undefined}
           bias={coordenadas}
         />
 
@@ -234,16 +248,18 @@ export function TripPlanner({
         {/* Botón calcular */}
         <button
           onClick={calcular}
-          disabled={!destinoTexto.trim() || !vehiculo || cargando}
+          disabled={faltaOrigen || !destinoTexto.trim() || !vehiculo || cargando}
           className="flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
         >
           {cargando ? <Spinner className="w-4 h-4" /> : <Navigation className="w-4 h-4" />}
           {cargando ? "Calculando ruta…" : "Calcular ruta"}
         </button>
 
-        {!cargando && (!destinoTexto.trim() || !vehiculo) && (
+        {!cargando && (faltaOrigen || !destinoTexto.trim() || !vehiculo) && (
           <p className="text-xs text-gray-400 text-center -mt-1">
-            {!destinoTexto.trim()
+            {faltaOrigen
+              ? "Añade un origen: no tenemos tu ubicación."
+              : !destinoTexto.trim()
               ? "Añade tu destino para calcular la ruta."
               : "Configura tu vehículo para estimar el ahorro y las paradas."}
           </p>

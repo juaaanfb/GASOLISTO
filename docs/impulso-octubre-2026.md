@@ -55,3 +55,12 @@ Vercel: 52 visitantes y 79 vistas en ventana horaria aproximada. No equiparar fu
 - Documentacion de roles local corregida: Codex implementa sin depender de Claude.
 - Despliegue de seguridad cerrado: commit f9a0bd4, deployment dpl_DELT415Tqt9ES7F4fNuGi131tAcA, produccion READY. Comprobaciones HTTP del dominio: home, como-funciona, privacidad, robots, sitemap y API 200 (11522 estaciones). Suite completa contra bundle publico PASS en movil/escritorio, error/reintento y vacio, con servicios externos simulados. Script bloquea envios a PostHog/Vercel Analytics para no contaminar datos.
 - Siguiente prioridad: dashboard real PostHog 250159 y diagnostico ordenado del planificador; quedan pendientes vulnerabilidades de herramientas de compilacion Tailwind 3.
+
+## Planificador y acceso a datos - 9 octubre 2026
+
+- Problema reproducido: el planificador recibia coordenadas fallback de Madrid como si fueran la ubicacion actual. Ahora requiere origen escrito cuando GPS falla o sigue pendiente, muestra Escribe el origen y explica el bloqueo; no ofrece Mi ubicacion sin GPS disponible. La ciudad seleccionada en el mapa no se convierte silenciosamente en origen del viaje.
+- Con GPS permitido se mantiene el origen automatico. Se bloquean calculos concurrentes, incluido Enter repetido. Logica de precios, coste, rutas y recomendaciones intacta.
+- Nuevos eventos trip_calculation_started y trip_calculation_failed permiten distinguir intento, exito y error; solo categorias de error conocidas y propiedades no sensibles, nunca texto libre ni coordenadas. Ingestion real pendiente de verificar en PostHog.
+- Validacion: typecheck/build correctos; smoke PASS movil/escritorio, origen obligatorio incluso con Enter (cero peticiones de ruta), calculo con origen escrito, GPS permitido, error de ruta recuperable, error API/reintento y vacio. Capturas del aviso revisadas en ambos tamanos. Pruebas con servicios simulados y analitica bloqueada; no son evidencia de disponibilidad externa ni de mejora de conversion.
+- Dashboard bloqueado: projects-get solo devuelve Default project 249360 sin ingestion; organizations-get solo devuelve una organizacion GASOLISTO. El proyecto real EU 250159 no aparece en la conexion. No se crearon insights en el proyecto equivocado ni se reutilizaron metricas del 7 octubre como actuales. El inventario de navegador de esta sesion tampoco ofrece Chrome autenticado.
+- Despliegue de este bloque: pendiente de verificar tras push; actualizar este registro al cerrar.

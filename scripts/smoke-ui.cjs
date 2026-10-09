@@ -12,19 +12,23 @@ const station = {
   precios: { gasolina95: 1.5, diesel: 1.4 }, ultimaActualizacion: "09/10/2026",
 };
 
-async function setup(browser, viewport, mode = "success") {
+async function setup(browser, viewport, mode = "success", geo = "denied") {
   const context = await browser.newContext({ viewport });
-  await context.addInitScript(() => {
+  await context.addInitScript((geo) => {
     localStorage.setItem("gasolisto_onboarding_visto", "1");
     Object.defineProperty(navigator, "geolocation", {
-      value: { getCurrentPosition: (_success, error) => error({ code: 1 }) },
+      value: { getCurrentPosition: (success, error) => {
+        if (geo === "allowed") success({ coords: { latitude: 40.4168, longitude: -3.7038, accuracy: 20 } });
+        else error({ code: 1 });
+      } },
     });
-  });
+  }, geo);
   const page = await context.newPage();
   // Smoke visits must not pollute production analytics.
   await page.route(/https:\/\/[^/]*(posthog\.com|vercel-insights\.com)\//, (route) => route.abort());
   await page.route("**/_vercel/insights/**", (route) => route.abort());
   const errors = [];
+  const routeRequests = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/api/gasolineras", (route) => route.fulfill({
     status: mode === "error" ? 500 : 200,
@@ -33,18 +37,21 @@ async function setup(browser, viewport, mode = "success") {
   }));
   await page.route("https://photon.komoot.io/**", (route) => {
     const query = new URL(route.request().url()).searchParams.get("q");
-    const destination = query !== "Madrid";
+    const destination = !query.startsWith("Madrid");
     return route.fulfill({ json: { features: [{
       geometry: { coordinates: destination ? [-0.3763, 39.4699] : [-3.7038, 40.4168] },
       properties: { name: destination ? "Valencia" : "Madrid", countrycode: "ES", osm_value: "city" },
     }] } });
   });
-  await page.route("https://router.project-osrm.org/**", (route) => route.fulfill({
-    json: { code: "Ok", routes: [{ distance: 350000,
+  await page.route("https://router.project-osrm.org/**", (route) => {
+    routeRequests.push(route.request().url());
+    return route.fulfill({
+    json: mode === "route-error" ? { code: "NoRoute", routes: [] } : { code: "Ok", routes: [{ distance: 350000,
       geometry: { coordinates: [[-3.7038, 40.4168], [-0.3763, 39.4699]] } }] },
-  }));
+    });
+  });
   await page.goto(baseURL);
-  return { context, page, errors };
+  return { context, page, errors, routeRequests };
 }
 
 async function run() {
@@ -55,7 +62,7 @@ async function run() {
   });
   try {
     for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }]) {
-      const { context, page, errors } = await setup(browser, viewport);
+      const { context, page, errors, routeRequests } = await setup(browser, viewport);
       const input = page.getByPlaceholder("Busca ciudad o zona");
       const fallback = page.getByRole("button", { name: "Buscar ciudad", exact: true });
       await fallback.click();
@@ -79,13 +86,37 @@ async function run() {
       await page.getByRole("button", { name: "Viaje", exact: true }).click();
       await page.getByPlaceholder("\u00bfA d\u00f3nde vas?").fill("Valencia");
       await page.getByRole("button", { name: "Valencia", exact: true }).click();
+      assert(await page.getByRole("button", { name: "Calcular ruta", exact: true }).isDisabled());
+      await page.getByPlaceholder("\u00bfA d\u00f3nde vas?").press("Enter");
+      assert.equal(routeRequests.length, 0);
+      await page.screenshot({ path: path.join(output, `trip-origin-required-${viewport.width}.png`) });
+      await page.getByPlaceholder("Escribe el origen").fill("Madrid");
+      await page.getByRole("button", { name: "Madrid", exact: true }).click();
       await page.getByRole("button", { name: "Calcular ruta", exact: true }).click();
       await page.getByText("350 km", { exact: true }).waitFor();
+      assert.equal(routeRequests.length, 1);
+      await page.locator(".leaflet-container").last().waitFor({ state: "visible" });
       await page.screenshot({ path: path.join(output, `trip-${viewport.width}.png`) });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       assert.deepEqual(errors, []);
       await context.close();
       console.log(`PASS ${viewport.width}x${viewport.height}: fallback, city, station, trip, no overflow/errors`);
+    }
+    for (const mode of ["success", "route-error"]) {
+      const { context, page, errors } = await setup(browser, { width: 390, height: 844 }, mode, "allowed");
+      await page.getByRole("button", { name: "Viaje", exact: true }).click();
+      await page.getByPlaceholder("Tu ubicaci\u00f3n actual").waitFor();
+      await page.getByPlaceholder("\u00bfA d\u00f3nde vas?").fill("Valencia");
+      await page.getByRole("button", { name: "Valencia", exact: true }).click();
+      await page.getByRole("button", { name: "Calcular ruta", exact: true }).click();
+      if (mode === "success") await page.getByText("350 km", { exact: true }).waitFor();
+      else {
+        await page.getByText("No se pudo calcular la ruta. Verifica el destino.", { exact: true }).waitFor();
+        assert(await page.getByRole("button", { name: "Calcular ruta", exact: true }).isEnabled());
+      }
+      assert.deepEqual(errors, []);
+      await context.close();
+      console.log(`PASS GPS allowed / route ${mode}`);
     }
     for (const mode of ["error", "empty"]) {
       const { context, page, errors } = await setup(browser, { width: 390, height: 844 }, mode);
