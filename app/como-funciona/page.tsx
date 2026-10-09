@@ -25,17 +25,22 @@ const PREGUNTAS = [
   {
     pregunta: "¿Cada cuánto se actualizan los precios?",
     respuesta:
-      "Gasolisto consulta la API oficial en tiempo real cada vez que abres la app, así que ves los mismos precios que publica el Ministerio en ese momento.",
+      "Al abrir la app se solicitan los precios oficiales disponibles. Para agilizar la carga usamos caché, por lo que no garantizamos actualizaciones al instante. Puedes consultar la fecha de actualización mostrada y confirmar el precio en la estación antes de repostar.",
   },
   {
     pregunta: "¿Necesito compartir mi ubicación?",
     respuesta:
-      "Es opcional. Si la compartes, calculamos distancias reales a las gasolineras cercanas; el cálculo se hace en tu propio dispositivo, nunca se envía a ningún servidor. Si no la compartes, la app usa Madrid como referencia.",
+      "No. Puedes buscar una ciudad o zona en el buscador y consultar sus gasolineras sin dar permiso de ubicación. Si la compartes, la app calcula distancias aproximadas en tu dispositivo. Si falla y todavía no has elegido ciudad, Madrid aparece como referencia, no como tu ubicación real. Para planificar un viaje sin GPS, escribe el origen.",
+  },
+  {
+    pregunta: "¿Las distancias son por carretera?",
+    respuesta:
+      "La distancia a cada gasolinera es una aproximación en línea recta. El planificador calcula una ruta por carretera mediante un servicio externo, al que envía las coordenadas de origen y destino. Al pulsar Cómo llegar, se abre Google Maps o Apple Maps para consultar la navegación.",
   },
   {
     pregunta: "¿Cómo calcula el ahorro?",
     respuesta:
-      "Compara el precio de cada gasolinera con el precio medio y máximo de las gasolineras de tu zona, y lo multiplica por la capacidad del depósito de tu vehículo, para darte una cifra real en euros, no solo en céntimos por litro.",
+      "Compara precios de las gasolineras de tu zona y estima el coste por depósito según tu vehículo. Es una orientación, no un ahorro garantizado: el resultado depende del combustible, los litros que repostes, el consumo, la distancia y los descuentos que hayas configurado.",
   },
   {
     pregunta: "¿Funciona en el móvil?",

@@ -17,7 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       // contenido en vez de "ahora mismo" en cada build, que es una señal
       // de frescura poco honesta para páginas que no han cambiado.
       url: `${SITE_URL}/como-funciona`,
-      lastModified: new Date("2026-08-12"),
+      lastModified: new Date("2026-10-09"),
       changeFrequency: "monthly",
       priority: 0.6,
     },
