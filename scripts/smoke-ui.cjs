@@ -21,6 +21,9 @@ async function setup(browser, viewport, mode = "success") {
     });
   });
   const page = await context.newPage();
+  // Smoke visits must not pollute production analytics.
+  await page.route(/https:\/\/[^/]*(posthog\.com|vercel-insights\.com)\//, (route) => route.abort());
+  await page.route("**/_vercel/insights/**", (route) => route.abort());
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/api/gasolineras", (route) => route.fulfill({

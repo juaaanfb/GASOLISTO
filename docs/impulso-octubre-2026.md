@@ -53,4 +53,5 @@ Vercel: 52 visitantes y 79 vistas en ventana horaria aproximada. No equiparar fu
 - Prueba real local: API responde 200 con 11522 estaciones y Cache-Control public/max-age=0/s-maxage=300/stale-while-revalidate=3600. Como-funciona, privacidad, sitemap y robots responden 200.
 - Revision visual: capturas de detalle y viaje revisadas. Pendiente de Producto: el origen del viaje sigue mostrando Tu ubicacion actual cuando GPS falla; revisar en tarea separada antes de atribuir abandono a esa causa.
 - Documentacion de roles local corregida: Codex implementa sin depender de Claude.
-- Siguiente paso de este bloque: commit/push y verificar Vercel READY antes de cierre en Notion. Siguiente prioridad del roadmap: dashboard real PostHog 250159 y diagnostico ordenado del planificador.
+- Despliegue de seguridad cerrado: commit f9a0bd4, deployment dpl_DELT415Tqt9ES7F4fNuGi131tAcA, produccion READY. Comprobaciones HTTP del dominio: home, como-funciona, privacidad, robots, sitemap y API 200 (11522 estaciones). Suite completa contra bundle publico PASS en movil/escritorio, error/reintento y vacio, con servicios externos simulados. Script bloquea envios a PostHog/Vercel Analytics para no contaminar datos.
+- Siguiente prioridad: dashboard real PostHog 250159 y diagnostico ordenado del planificador; quedan pendientes vulnerabilidades de herramientas de compilacion Tailwind 3.
