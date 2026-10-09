@@ -1,12 +1,12 @@
 # GASOLISTO Working System
 
-This project uses a "Codex as brain, Claude Code as builder" workflow.
+Since September 22, 2026, Codex is both the project brain and implementation engine. Claude is no longer required.
 
 ## Source Of Truth
 
 - The live codebase is this local `GASOLISTO` folder.
 - Notion is the living product and technical memory.
-- GitHub becomes the delivery and review surface once the current local repo is connected to the correct remote.
+- GitHub (`juaaanfb/GASOLISTO`, branch `main`) provides backup, history, and delivery to Vercel.
 - Vercel deploys happen after local validation, not before.
 
 If Notion and the local repo disagree, inspect the repo first and then update Notion when the task closes.
@@ -14,21 +14,21 @@ If Notion and the local repo disagree, inspect the repo first and then update No
 ## Roles
 
 - User: product owner and final taste/priority holder.
-- Codex: technical lead, product thinking partner, prompt author, reviewer, and documentation closer.
-- Claude Code: implementation engine working in the same local folder.
+- Codex: technical lead, product thinking partner, implementation engine, reviewer, and documentation closer.
+- Departments: specialized product, audit, marketing, and data analysis coordinated by the central chat.
 
 ## Task Flow
 
 1. Discuss the idea with Codex.
-2. Codex turns the idea into a scoped implementation prompt for Claude Code.
-3. Claude Code implements in the local `GASOLISTO` folder.
+2. Codex defines a small scope and observable acceptance criteria.
+3. Codex implements in the local `GASOLISTO` folder.
 4. Codex reviews the resulting changes.
-5. Codex prepares any corrective prompt if needed.
+5. Codex fixes issues, validates, pushes to GitHub, and verifies the Vercel deployment.
 6. Codex updates Notion only when the task is closed.
 
 ## Prompt Requirements
 
-Every Claude Code prompt should include:
+Every implementation task should include:
 
 - Current project context.
 - Goal.
@@ -39,7 +39,7 @@ Every Claude Code prompt should include:
 - Required checks.
 - Explicit non-goals.
 
-Use `docs/claude-code-prompt-template.md` as the base.
+`docs/claude-code-prompt-template.md` remains a historical reference, not a required dependency.
 
 ## Review Gate
 

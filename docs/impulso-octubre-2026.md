@@ -15,7 +15,7 @@ No comprar servicios ni alterar permisos o credenciales.
 
 ## Siguientes entregas
 
-1. Validar cambios con typecheck/build y navegador movil/escritorio; subir codigo validado y verificar despliegue.
+1. Cerrado: bloque UX desplegado el 7 octubre, commit 6857222, Vercel READY y comprobado en dominio publico.
 2. Dashboard PostHog proyecto 250159: canales, activacion, embudos ordenados por sesion, estacion a maps y planificador. Revisar trafico interno antes de llamarlo clientes reales.
 3. Diagnosticar abandono del planificador y sesiones con friccion; mejorar solo tras reproducir problema.
 4. Contenido cercano X/LinkedIn y calendario siete dias, alternando problema y solucion; capturas reales y enlaces de campana.
@@ -39,3 +39,18 @@ Vercel: 52 visitantes y 79 vistas en ventana horaria aproximada. No equiparar fu
 - typecheck y build correctos; UX revisada en movil/escritorio.
 - No declarar deploy, Notion o dashboard terminados sin verificarlo.
 - Mantener bitacora de commits, deploys, pendientes y bloqueos reales.
+
+## Ejecucion automatica del 9 octubre
+
+- Esta ejecucion confirma que el heartbeat puede iniciar trabajo en este chat. No prueba que todas las ejecuciones anteriores hayan ocurrido.
+- Seguridad: Next actualizado a 15.5.27 (Maintenance LTS), React/React DOM a 19.3.0 y tipos correspondientes. PostCSS actualizado a 8.5.29 con override compartido para evitar que Next conserve su version vulnerable fijada. Lockfile regenerado; npm ls confirma dependencias coherentes.
+- Fuentes: https://nextjs.org/blog/september-2026-security-release y https://nextjs.org/docs/app/guides/upgrading/version-15.
+- Auditoria completa: antes 11 avisos (1 critico, 7 altos, 2 moderados, 1 bajo); ahora 7 (5 altos, 2 moderados), todos asociados a Tailwind 3 y herramientas de compilacion. npm audit --omit=dev: 0 avisos conocidos. No equivale a seguridad absoluta ni cierra el riesgo de desarrollo.
+- No se ejecuto audit fix --force: propone Tailwind 4, migracion de estilos separada. Esa tarea permanece pendiente.
+- Validacion: typecheck y build pasan; home First Load JS aumenta de 124 a 135 kB por actualizacion de framework. Sin cambios a logica de precios, routing o tracking.
+- Pruebas reutilizables: scripts/smoke-ui.cjs / npm run test:smoke. Requiere Playwright instalado o PLAYWRIGHT_MODULE_PATH apuntando al runtime disponible; SMOKE_BROWSER_PATH opcional. SMOKE_URL por defecto http://localhost:3019. Pruebas con fixtures, no metricas ni capturas de contenido para publicar en RRSS.
+- Playwright Edge headless: PASS 390x844 y 1280x720 en fallback, ciudad, estacion, viaje, sin errores JS ni overflow; PASS error API/reintento y datos vacios. Chrome headless instalado fallo al arrancar; no se modifico el perfil personal ni se intento desbloquear Windows.
+- Prueba real local: API responde 200 con 11522 estaciones y Cache-Control public/max-age=0/s-maxage=300/stale-while-revalidate=3600. Como-funciona, privacidad, sitemap y robots responden 200.
+- Revision visual: capturas de detalle y viaje revisadas. Pendiente de Producto: el origen del viaje sigue mostrando Tu ubicacion actual cuando GPS falla; revisar en tarea separada antes de atribuir abandono a esa causa.
+- Documentacion de roles local corregida: Codex implementa sin depender de Claude.
+- Siguiente paso de este bloque: commit/push y verificar Vercel READY antes de cierre en Notion. Siguiente prioridad del roadmap: dashboard real PostHog 250159 y diagnostico ordenado del planificador.
