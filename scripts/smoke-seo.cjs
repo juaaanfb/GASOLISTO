@@ -14,11 +14,16 @@ async function run() {
   });
   try {
     for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }]) {
-      const context = await browser.newContext({ viewport });
+      const context = await browser.newContext({ viewport, serviceWorkers: "block" });
       const page = await context.newPage();
-      // Validation visits must not be counted as product usage.
-      await page.route(/https:\/\/[^/]*(posthog\.com|vercel-insights\.com)\//, (route) => route.abort());
-      await page.route("**/_vercel/insights/**", (route) => route.abort());
+      // Allow only the document and build assets, including with randomized analytics intake paths.
+      await page.route("**/*", (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        const allowed = url.origin === new URL(baseURL).origin && request.method() === "GET"
+          && (url.pathname.startsWith("/_next/") || ["/como-funciona", "/privacidad", "/favicon.ico"].includes(url.pathname));
+        return allowed ? route.continue() : route.abort();
+      });
       for (const route of ["/como-funciona", "/privacidad"]) {
         const response = await page.goto(`${baseURL}${route}`);
         assert.equal(response.status(), 200);
@@ -38,6 +43,14 @@ async function run() {
             assert(text.includes(item.acceptedAnswer.text));
           }
           await page.screenshot({ path: path.join(output, `como-funciona-${viewport.width}.png`), fullPage: true });
+        } else {
+          const text = await page.locator("body").innerText();
+          assert(text.includes("PostHog"));
+          assert(text.includes("OSRM recibe las coordenadas de origen y destino"));
+          assert(!text.includes("no hay forma de identificarte"));
+          assert(!text.includes("nunca se envía a nuestros servidores"));
+          assert.equal(await page.getByRole("link", { name: "contacto.gasolisto@gmail.com" }).getAttribute("href"), "mailto:contacto.gasolisto@gmail.com");
+          await page.screenshot({ path: path.join(output, `privacidad-${viewport.width}.png`), fullPage: true });
         }
       }
       await context.close();
@@ -48,6 +61,7 @@ async function run() {
     const xml = await sitemap.text();
     assert(xml.includes("https://gasolisto.com/como-funciona"));
     assert(xml.includes("2026-10-09T00:00:00.000Z"));
+    assert(xml.includes("2026-10-10T00:00:00.000Z"));
     const robots = await fetch(`${baseURL}/robots.txt`);
     assert.equal(robots.status, 200);
     assert((await robots.text()).includes("Sitemap: https://gasolisto.com/sitemap.xml"));

@@ -23,7 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${SITE_URL}/privacidad`,
-      lastModified: new Date("2026-08-12"),
+      lastModified: new Date("2026-10-10"),
       changeFrequency: "yearly",
       priority: 0.3,
     },
