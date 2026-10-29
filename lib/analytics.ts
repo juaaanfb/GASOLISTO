@@ -7,11 +7,13 @@
 // Restricción de privacidad para todo lo que se llame desde aquí: nunca
 // texto libre completo (búsquedas, origen/destino de viaje) ni coordenadas
 // exactas. Solo longitudes, buckets y categorías ya definidas.
+import { analyticsAllowed } from "@/lib/analytics-consent";
+
 export function track(evento: string, propiedades?: Record<string, unknown>) {
-  if (typeof window === "undefined") return;
+  if (!analyticsAllowed()) return;
   void import("posthog-js")
     .then(({ default: posthog }) => {
-      posthog.capture(evento, propiedades);
+      if (analyticsAllowed()) posthog.capture(evento, propiedades);
     })
     .catch(() => {});
 }

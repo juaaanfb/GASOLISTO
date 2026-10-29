@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { AnalyticsConsent } from "@/components/AnalyticsConsent";
 
 export const metadata: Metadata = {
   title: "Privacidad — Gasolisto",
@@ -24,10 +25,17 @@ export default function PrivacidadPage() {
 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Privacidad</h1>
         <p className="text-sm text-gray-400 mb-8">
-          Qué datos utiliza la app y qué servicios intervienen. Actualizado el 10 de octubre de 2026.
+          Qué datos utiliza la app y qué servicios intervienen. Actualizado el 13 de octubre de 2026.
         </p>
 
         <div className="space-y-6 text-sm text-gray-700 leading-relaxed">
+          <AnalyticsConsent />
+          <p>PostHog y Vercel Analytics se activan solo si aceptas la analítica opcional.
+            Puedes rechazarla o retirar tu aceptación aquí; la elección se guarda en
+            este navegador. Cambiarla recarga la página. La retirada no borra los
+            datos ya recibidos por los proveedores. Las grabaciones de sesión y la
+            captura automática de clics están desactivadas. Las visitas medidas desde
+            este cambio representan solo navegadores que han aceptado.</p>
           <section>
             <h2 className="font-semibold text-gray-900 mb-1.5">Sin cuenta para usar la app</h2>
             <p>
