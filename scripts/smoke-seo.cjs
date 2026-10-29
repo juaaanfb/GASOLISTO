@@ -61,7 +61,7 @@ async function run() {
     const xml = await sitemap.text();
     assert(xml.includes("https://gasolisto.com/como-funciona"));
     assert(xml.includes("2026-10-09T00:00:00.000Z"));
-    assert(xml.includes("2026-10-10T00:00:00.000Z"));
+    assert(xml.includes("2026-10-13T00:00:00.000Z"));
     const robots = await fetch(`${baseURL}/robots.txt`);
     assert.equal(robots.status, 200);
     assert((await robots.text()).includes("Sitemap: https://gasolisto.com/sitemap.xml"));

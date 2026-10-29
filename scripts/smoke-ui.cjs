@@ -16,6 +16,7 @@ async function setup(browser, viewport, mode = "success", geo = "denied") {
   const context = await browser.newContext({ viewport });
   await context.addInitScript((geo) => {
     localStorage.setItem("gasolisto_onboarding_visto", "1");
+    localStorage.setItem("gasolisto_analytics_consent_v1", "rejected");
     Object.defineProperty(navigator, "geolocation", {
       value: { getCurrentPosition: (success, error) => {
         if (geo === "allowed") success({ coords: { latitude: 40.4168, longitude: -3.7038, accuracy: 20 } });
