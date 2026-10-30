@@ -28,7 +28,12 @@ export function AnalyticsConsent({ banner = false }: { banner?: boolean }) {
   if (!ready || (banner && choice !== null)) return null;
   return (
     <section aria-label="Preferencias de analítica" className={banner
-      ? "fixed bottom-24 right-4 left-4 sm:left-auto sm:w-[420px] z-[110] bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-sm text-gray-700"
+      /* Por encima de los paneles internos de Leaflet (hasta z 700, sin
+         contexto de apilamiento propio) y del planificador de viaje (z
+         1000), para que el aviso no quede oculto tras el mapa en la
+         pestaña Mapa; por debajo de la bienvenida (z 2000) para conservar
+         su orden en la primera visita. */
+      ? "fixed bottom-24 right-4 left-4 sm:left-auto sm:w-[420px] z-[1500] bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-sm text-gray-700"
       : "border-t border-gray-200 pt-5 text-sm text-gray-700"}>
       <h2 className="font-semibold text-gray-900 mb-2">Analítica opcional</h2>
       <p>¿Nos permites medir visitas y uso con PostHog y Vercel? La web funciona igual si rechazas.</p>
