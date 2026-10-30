@@ -93,6 +93,11 @@ async function run() {
       await page.screenshot({ path: path.join(output, `trip-origin-required-${viewport.width}.png`) });
       await page.getByPlaceholder("Escribe el origen").fill("Madrid");
       await page.getByRole("button", { name: "Madrid", exact: true }).click();
+      // Autonomía alta a propósito: deja la ruta mockeada (350 km) dentro
+      // del alcance seguro sin paradas, para que este test siga centrado en
+      // el flujo de UI y no dependa de la lógica de autonomía/paradas, ya
+      // cubierta aparte en scripts/test-autonomia.ts.
+      await page.getByPlaceholder("Ej: 120").fill("500");
       await page.getByRole("button", { name: "Calcular ruta", exact: true }).click();
       await page.getByText("350 km", { exact: true }).waitFor();
       assert.equal(routeRequests.length, 1);
@@ -109,6 +114,7 @@ async function run() {
       await page.getByPlaceholder("Tu ubicaci\u00f3n actual").waitFor();
       await page.getByPlaceholder("\u00bfA d\u00f3nde vas?").fill("Valencia");
       await page.getByRole("button", { name: "Valencia", exact: true }).click();
+      await page.getByPlaceholder("Ej: 120").fill("500");
       await page.getByRole("button", { name: "Calcular ruta", exact: true }).click();
       if (mode === "success") await page.getByText("350 km", { exact: true }).waitFor();
       else {
