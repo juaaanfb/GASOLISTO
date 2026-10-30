@@ -160,8 +160,11 @@ export default function HomePage() {
   // interno (coordenadas ya resuelve esa segunda prioridad por su cuenta).
   const centroActivo = zonaActiva?.coords ?? coordenadas;
   // Pin "tú estás aquí": solo con ubicación real confirmada, nunca con el
-  // fallback interno ni con una zona buscada (no son "tu" ubicación).
-  const ubicacionUsuario = esFallback ? null : coordenadas;
+  // fallback interno, una zona buscada, ni mientras el permiso sigue
+  // pendiente (coordenadas aún vale el centro de Madrid por defecto hasta
+  // que useGeolocation resuelve, y sin este chequeo se mostraba ese centro
+  // como si fuera la ubicación real del usuario durante esa espera).
+  const ubicacionUsuario = esFallback || cargandoUbicacion ? null : coordenadas;
 
   const { vehiculos, vehiculoActivo, guardarVehiculo, eliminarVehiculo, seleccionarVehiculo, crearVehiculo, hidratado } = useVehiculo();
   const { todas, filtradas, cargando, error, ultimaActualizacion, refetch } = useGasolineras(centroActivo, filtros);
@@ -421,6 +424,7 @@ export default function HomePage() {
           placeholder="Busca ciudad o zona"
           icon={buscandoZona ? <Spinner className="w-4 h-4" /> : <Search className="w-4 h-4" />}
           soloLocalidades
+          valorConfirmado={zonaActiva?.label ?? null}
         />
         {errorZona && (
           <p className="text-xs text-red-600 mt-1.5 px-1">{errorZona}</p>

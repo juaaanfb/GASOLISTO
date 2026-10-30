@@ -16,6 +16,12 @@ interface AutocompleteInputProps {
   bias?: Coordenadas;
   soloLocalidades?: boolean;
   className?: string;
+  // Valor ya confirmado por quien usa el input fuera de una sugerencia
+  // clicada (p.ej. al resolver una búsqueda con Enter y fijar el label
+  // completo devuelto). Evita relanzar la búsqueda para ese texto exacto
+  // y reabrir el desplegable con sugerencias del propio resultado ya
+  // confirmado.
+  valorConfirmado?: string | null;
 }
 
 export function AutocompleteInput({
@@ -29,6 +35,7 @@ export function AutocompleteInput({
   bias,
   soloLocalidades,
   className,
+  valorConfirmado,
 }: AutocompleteInputProps) {
   const [sugerencias, setSugerencias] = useState<LugarSugerido[]>([]);
   const [abierto, setAbierto] = useState(false);
@@ -65,8 +72,12 @@ export function AutocompleteInput({
       ultimoSeleccionadoRef.current = null;
       return;
     }
+    // Mismo caso que arriba pero para una confirmación resuelta fuera del
+    // propio componente (p.ej. Enter sobre texto libre que el padre
+    // resuelve a un label completo y fija como "value").
+    if (valorConfirmado != null && value === valorConfirmado) return;
     buscar(value);
-  }, [value, buscar]);
+  }, [value, buscar, valorConfirmado]);
 
   // Cerrar al click fuera
   useEffect(() => {
@@ -99,7 +110,20 @@ export function AutocompleteInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => { if (sugerencias.length > 0) setAbierto(true); }}
-          onKeyDown={onKeyDown}
+          onKeyDown={(e) => {
+            // Enter normalmente confirma una búsqueda por texto libre (no
+            // una sugerencia del desplegable) en quien use este input — sin
+            // esto, el desplegable con las sugerencias del texto anterior
+            // se quedaba abierto y tapando el mapa tras confirmar. También
+            // se cancela el debounce pendiente: si no, su resultado podía
+            // llegar después y reabrir el desplegable igualmente.
+            if (e.key === "Enter") {
+              if (timerRef.current) clearTimeout(timerRef.current);
+              setSugerencias([]);
+              setAbierto(false);
+            }
+            onKeyDown?.(e);
+          }}
           className="w-full pl-9 pr-24 py-3 bg-gray-50 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all"
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
