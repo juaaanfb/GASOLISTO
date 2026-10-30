@@ -49,17 +49,27 @@ function puntoAKm(km: number): Coordenadas {
   return { lat: LAT, lng: LNG_ORIGEN + km / unGrado };
 }
 
+function cerca(a: Coordenadas, b: Coordenadas): boolean {
+  return Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lng - b.lng) < 1e-6;
+}
+
 // ─── Mock de fetch (OSRM) ──────────────────────────────────────────────────
 //
-// Cada test instala su propio mock. El genérico de abajo sirve de base:
-// interpreta la URL de OSRM, calcula la distancia Haversine entre los dos
-// puntos pedidos (igual a la "carretera" en esta red de pruebas, salvo que
-// el test indique una inflación específica para un par de coordenadas) y
-// devuelve una geometría de línea recta entre ambos.
+// Cada test instala su propio mock. Reconoce dos formas de URL:
+// - 2 puntos (origen;destino): la ruta principal. Devuelve una geometría
+//   interpolada (1 punto/km sobre la distancia en línea recta real entre
+//   los puntos) y, salvo que se fuerce distanciaPrincipalKm, una
+//   "distance" total igual a esa misma distancia en línea recta.
+// - 3 puntos (puntoRuta;estación;puntoRuta): verificación de ida+vuelta en
+//   una sola petición (igual que hace ahora obtenerIdaVueltaConTimeout).
+//   Devuelve routes[0].legs con la distancia de cada tramo por separado,
+//   para poder simular ida y vuelta distintas (no simétricas).
 interface LlamadaFetch { url: string; signal?: AbortSignal | null }
+interface Inflacion { puntoRuta: Coordenadas; estacion: Coordenadas; idaKm?: number; vueltaKm?: number }
 
 function crearMockFetch(opciones: {
-  inflaciones?: { desde: Coordenadas; hasta: Coordenadas; factor: number }[];
+  inflaciones?: Inflacion[];
+  distanciaPrincipalKm?: number;
   fallarSiempre?: boolean;
   fallarSoloEn?: (url: string, numLlamada: number) => boolean;
   respuestaVacia?: boolean;
@@ -70,44 +80,47 @@ function crearMockFetch(opciones: {
     if (opciones.fallarSiempre || opciones.fallarSoloEn?.(url, llamadas.length)) {
       throw new Error("NETWORK_FAIL_SIMULADO");
     }
-    const m = url.match(/driving\/([-\d.]+),([-\d.]+);([-\d.]+),([-\d.]+)/);
-    if (!m) throw new Error("URL_NO_RECONOCIDA_EN_MOCK: " + url);
-    const [, lng1, lat1, lng2, lat2] = m.map(Number) as unknown as number[];
-    const desde: Coordenadas = { lat: lat1, lng: lng1 };
-    const hasta: Coordenadas = { lat: lat2, lng: lng2 };
-
     if (opciones.respuestaVacia) {
       return { ok: true, json: async () => ({}) } as Response;
     }
 
-    let distanciaKm = calcularDistancia(desde, hasta);
-    const inflacion = opciones.inflaciones?.find(
-      (i) => Math.abs(i.desde.lat - desde.lat) < 1e-6 && Math.abs(i.desde.lng - desde.lng) < 1e-6 &&
-             Math.abs(i.hasta.lat - hasta.lat) < 1e-6 && Math.abs(i.hasta.lng - hasta.lng) < 1e-6
-    );
-    if (inflacion) distanciaKm = inflacion.factor; // factor = distancia final deseada (km), no multiplicador
+    const tramo = url.split("driving/")[1]?.split("?")[0] ?? "";
+    const puntosUrl: Coordenadas[] = tramo.split(";").map((par) => {
+      const [lng, lat] = par.split(",").map(Number);
+      return { lat, lng };
+    });
+    if (puntosUrl.length < 2) throw new Error("URL_NO_RECONOCIDA_EN_MOCK: " + url);
 
-    // La geometría real de OSRM trae muchos vértices intermedios, no solo
-    // origen/destino: aquí se interpola 1 punto por km (sobre la distancia
-    // en línea recta, suficiente para que la ventana de búsqueda del
-    // planificador encuentre puntos de ruta cercanos a cualquier estación
-    // de prueba, igual que ocurre con la geometría real de OSRM).
+    if (puntosUrl.length === 3) {
+      // Verificación de ida+vuelta.
+      const [puntoRuta, est] = puntosUrl;
+      const inflacion = opciones.inflaciones?.find((i) => cerca(i.puntoRuta, puntoRuta) && cerca(i.estacion, est));
+      const idaKm = inflacion?.idaKm ?? calcularDistancia(puntoRuta, est);
+      const vueltaKm = inflacion?.vueltaKm ?? calcularDistancia(est, puntoRuta);
+      return {
+        ok: true,
+        json: async () => ({
+          code: "Ok",
+          routes: [{ distance: (idaKm + vueltaKm) * 1000, legs: [{ distance: idaKm * 1000 }, { distance: vueltaKm * 1000 }] }],
+        }),
+      } as Response;
+    }
+
+    // Ruta principal.
+    const [desde, hasta] = puntosUrl;
     const distanciaLineaRecta = calcularDistancia(desde, hasta);
+    const distanciaReportada = opciones.distanciaPrincipalKm ?? distanciaLineaRecta;
     const pasos = Math.max(1, Math.round(distanciaLineaRecta));
     const coordinates: [number, number][] = [];
     for (let i = 0; i <= pasos; i++) {
       const t = i / pasos;
       coordinates.push([desde.lng + (hasta.lng - desde.lng) * t, desde.lat + (hasta.lat - desde.lat) * t]);
     }
-
     return {
       ok: true,
       json: async () => ({
         code: "Ok",
-        routes: [{
-          distance: distanciaKm * 1000,
-          geometry: { coordinates },
-        }],
+        routes: [{ distance: distanciaReportada * 1000, geometry: { coordinates } }],
       }),
     } as Response;
   };
@@ -139,6 +152,10 @@ async function esperaError(promesa: Promise<unknown>, codigoEsperado: string) {
     return;
   }
   assert.fail(`se esperaba que lanzara "${codigoEsperado}" y no lanzó nada`);
+}
+
+function redondear(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 // ─── Casos ──────────────────────────────────────────────────────────────────
@@ -190,10 +207,10 @@ async function main() {
     const estA = estacion({ lat: puntoA.lat + 0.02, lng: puntoA.lng, precio: 1.2 }); // la más barata
     const estB = estacion({ lat: puntoB.lat, lng: puntoB.lng, precio: 1.5 }); // la alcanzable
     const { fn, llamadas } = crearMockFetch({
-      // A está cerca en línea recta pero el mock dice que por carretera son
-      // 30 km de desvío de ida: inalcanzable dentro del margen (51 km),
-      // puesto que 45 (ya recorridos) + 30 > 51.
-      inflaciones: [{ desde: puntoA, hasta: { lat: estA.latitud, lng: estA.longitud }, factor: 30 }],
+      // A está cerca en línea recta pero por carretera son 30 km de ida
+      // (y 30 de vuelta): inalcanzable dentro del margen (51 km), puesto
+      // que 45 (ya recorridos) + 30 > 51.
+      inflaciones: [{ puntoRuta: puntoA, estacion: { lat: estA.latitud, lng: estA.longitud }, idaKm: 30, vueltaKm: 30 }],
     });
     (globalThis as { fetch: typeof fetch }).fetch = fn as unknown as typeof fetch;
     const plan = await planificarViaje(puntoAKm(0), puntoAKm(150), "Destino", [estA, estB], VEHICULO, COMBUSTIBLE, 60, null);
@@ -207,15 +224,11 @@ async function main() {
     const estD = estacion({ lat: puntoD.lat, lng: puntoD.lng, precio: 1.48 }); // en ruta, sin desvío
     const puntoCBase = puntoAKm(50);
     const estC = estacion({ lat: puntoCBase.lat + 0.1, lng: puntoCBase.lng, precio: 1.42 }); // más barata, con desvío
-    // Estaciones lejos de la ruta (otra latitud, fuera de cualquier
-    // ventana de búsqueda) solo para fijar un precio de referencia de
-    // mercado independiente de C y D; sin ellas la "media" sería la media
-    // de solo dos estaciones y el test no demostraría nada realista.
     const relleno = [1.6, 1.6, 1.6, 1.6].map((precio) => estacion({ lat: 10, lng: 10, precio }));
     const { fn } = crearMockFetch({
       inflaciones: [
-        { desde: puntoD, hasta: { lat: estD.latitud, lng: estD.longitud }, factor: 0 },
-        { desde: puntoCBase, hasta: { lat: estC.latitud, lng: estC.longitud }, factor: 25 }, // 25 km ida
+        { puntoRuta: puntoD, estacion: { lat: estD.latitud, lng: estD.longitud }, idaKm: 0, vueltaKm: 0 },
+        { puntoRuta: puntoCBase, estacion: { lat: estC.latitud, lng: estC.longitud }, idaKm: 25, vueltaKm: 25 },
       ],
     });
     (globalThis as { fetch: typeof fetch }).fetch = fn as unknown as typeof fetch;
@@ -251,8 +264,17 @@ async function main() {
     );
     assert.equal(plan.paradas.length, 2, `se esperaban 2 paradas, hubo ${plan.paradas.length}`);
     assert(plan.paradas[0].kmDesdeOrigen < plan.paradas[1].kmDesdeOrigen, "las paradas deben ir en orden creciente de km, sin retroceso");
-    assert.equal(plan.paradas[0].litrosARepostar, plan.paradas[1].litrosARepostar, "mismo criterio de repostaje parcial en cada parada");
-    assert.equal(plan.paradas[0].autonomiaTrasRepostarKm, plan.paradas[1].autonomiaTrasRepostarKm, "autonomía tras repostar coherente (no se reinicia al depósito completo)");
+    // El balance de combustible es individual por parada (combustible que
+    // quedaba al llegar + lo repostado), así que los litros repostados NO
+    // tienen por qué coincidir entre paradas -- lo que debe cumplirse
+    // siempre es que cada una llega como mucho al objetivo del 75% del
+    // depósito, nunca por encima de la capacidad.
+    for (const parada of plan.paradas) {
+      assert(parada.litrosARepostar > 0 && parada.litrosARepostar <= VEHICULO.deposito * 0.75 + 1e-9,
+        `litrosARepostar (${parada.litrosARepostar}) debe estar entre 0 y el 75% del depósito`);
+      assert(parada.autonomiaTrasRepostarKm <= Math.round(VEHICULO.deposito / VEHICULO.consumo * 100),
+        "la autonomía tras repostar nunca puede superar la del depósito lleno");
+    }
     const idsParadas = new Set(plan.paradas.map((p) => p.gasolinera.id));
     assert.equal(idsParadas.size, 2, "no debe repetirse ninguna gasolinera");
     // Petición principal + como mucho MAX_CANDIDATOS_VERIFICAR_POR_TRAMO (3) por cada una de las 2 paradas.
@@ -293,13 +315,13 @@ async function main() {
     const est = estacion({ lat: punto.lat, lng: punto.lng, precio: 1.5 });
     const { fn } = crearMockFetch({
       // La primera llamada (ruta principal) funciona; todas las siguientes
-      // (verificación de desvío a estaciones) fallan.
+      // (verificación de ida+vuelta) fallan.
       fallarSoloEn: (_url, numLlamada) => numLlamada > 1,
     });
     (globalThis as { fetch: typeof fetch }).fetch = fn as unknown as typeof fetch;
     await esperaError(
       planificarViaje(puntoAKm(0), puntoAKm(150), "Destino", [est], VEHICULO, COMBUSTIBLE, 60, null),
-      "SIN_PARADA_ALCANZABLE"
+      "FALLO_VERIFICACION_PROVEEDOR"
     );
   });
 
@@ -310,6 +332,124 @@ async function main() {
     (globalThis as { fetch: typeof fetch }).fetch = fn as unknown as typeof fetch;
     await planificarViaje(puntoAKm(0), puntoAKm(150), "Destino", [est], VEHICULO, COMBUSTIBLE, 60, null);
     assert(llamadas.every((l) => l.signal instanceof AbortSignal), "toda petición a OSRM debe llevar un AbortSignal para poder cancelarse");
+  });
+
+  // ── Correcciones revisadas por Cerebro Central (30/10/2026) ──────────────
+
+  await test("10. Combustible restante conservado y capacidad del depósito respetada", async () => {
+    const punto = puntoAKm(10);
+    const est = estacion({ lat: punto.lat, lng: punto.lng, precio: 1.5 }); // en ruta, sin desvío
+    const { fn } = crearMockFetch({});
+    (globalThis as { fetch: typeof fetch }).fetch = fn as unknown as typeof fetch;
+    // Depósito 20L, consumo 6L/100km. Autonomía inicial 60km, parada a
+    // 10km: quedan 50km de autonomía al llegar = 3L. Objetivo 75% del
+    // depósito = 15L. Repostaje esperado = 15 - 3 = 12L, NUNCA 15L fijos
+    // (eso excedería lo que de verdad falta para llegar al objetivo).
+    const plan = await planificarViaje(puntoAKm(0), puntoAKm(150), "Destino", [est], VEHICULO, COMBUSTIBLE, 60, null);
+    assert.equal(plan.paradas.length, 1);
+    const parada = plan.paradas[0];
+    assert.equal(parada.litrosARepostar, 12, `se esperaban 12L repostados (3L restantes + 12L = 15L, 75% del depósito), se obtuvieron ${parada.litrosARepostar}L`);
+    const litrosRestantesAlLlegar = 3;
+    assert(
+      parada.litrosARepostar + litrosRestantesAlLlegar <= VEHICULO.deposito + 1e-9,
+      "el combustible resultante no puede superar la capacidad del depósito"
+    );
+    assert.equal(parada.autonomiaTrasRepostarKm, 250, "15L a 6L/100km = 250km de autonomía tras repostar");
+  });
+
+  await test("11. Dos candidatas alcanzables cuyo orden cambia al verificar el desvío real", async () => {
+    const puntoA = puntoAKm(30);
+    const puntoB = puntoAKm(35);
+    // A: más barata y más cerca en línea recta -> gana el orden inicial
+    // (preselección barata). Pero su desvío REAL verificado es grande.
+    const estA = estacion({ lat: puntoA.lat + 0.018, lng: puntoA.lng, precio: 1.40 });
+    // B: algo más cara y más lejos en línea recta -> pierde el orden
+    // inicial. Pero su desvío REAL verificado es pequeño: acaba
+    // compensando más que A una vez comprobado por carretera.
+    const estB = estacion({ lat: puntoB.lat + 0.054, lng: puntoB.lng, precio: 1.50 });
+    const relleno = [1.70, 1.70, 1.70].map((precio) => estacion({ lat: 10, lng: 10, precio })); // precio de referencia = 1.60
+    const { fn } = crearMockFetch({
+      inflaciones: [
+        { puntoRuta: puntoA, estacion: { lat: estA.latitud, lng: estA.longitud }, idaKm: 25, vueltaKm: 25 },
+        { puntoRuta: puntoB, estacion: { lat: estB.latitud, lng: estB.longitud }, idaKm: 3, vueltaKm: 3 },
+      ],
+    });
+    (globalThis as { fetch: typeof fetch }).fetch = fn as unknown as typeof fetch;
+    const plan = await planificarViaje(puntoAKm(0), puntoAKm(200), "Destino", [estA, estB, ...relleno], VEHICULO, COMBUSTIBLE, 100, null);
+    assert.equal(plan.paradas.length, 1);
+    assert.equal(plan.paradas[0].gasolinera.id, estB.id, "tras verificar el desvío real, B debe ganar a A aunque A fuera la preselección inicial más barata/cercana");
+    assert(plan.paradas[0].ahorroNetoEstimado > 0, "B debe salir con ahorro neto positivo");
+  });
+
+  await test("12. Ida corta y regreso largo: no se asume simetría", async () => {
+    const puntoParada1 = puntoAKm(20);
+    const est1 = estacion({ lat: puntoParada1.lat + 0.01, lng: puntoParada1.lng, precio: 1.5 });
+    const puntoParada2 = puntoAKm(150); // en ruta, sin desvío: resuelve el 2º tramo con holgura si hace falta
+    const est2 = estacion({ lat: puntoParada2.lat, lng: puntoParada2.lng, precio: 1.5 });
+    const { fn } = crearMockFetch({
+      inflaciones: [
+        // Ida corta (2km) pero regreso largo (20km): con depósito 20L y
+        // consumo 6L/100km, repostar al 75% (15L tras repostar = 250km de
+        // autonomía bruta) menos un regreso de 20km deja 230km de
+        // autonomía real para el siguiente tramo. Si se asumiera
+        // (erróneamente) que el regreso = la ida (2km), quedarían 248km:
+        // suficiente para llegar directo a destino sin una 2ª parada. Con
+        // el regreso real (20km) NO llega, y hace falta una 2ª parada.
+        { puntoRuta: puntoParada1, estacion: { lat: est1.latitud, lng: est1.longitud }, idaKm: 2, vueltaKm: 20 },
+      ],
+    });
+    (globalThis as { fetch: typeof fetch }).fetch = fn as unknown as typeof fetch;
+    const plan = await planificarViaje(puntoAKm(0), puntoAKm(220), "Destino", [est1, est2], VEHICULO, COMBUSTIBLE, 60, null);
+    assert.equal(plan.paradas.length, 2, `con el regreso real (20km, no simétrico a la ida de 2km) hacen falta 2 paradas para llegar a 220km; hubo ${plan.paradas.length}`);
+    assert.equal(plan.paradas[0].desvioKm, 22, "el desvío mostrado debe ser ida+vuelta reales (2+20), no 2*ida");
+  });
+
+  await test("13. Límite de paradas sin alcanzar destino: error, no un plan normal", async () => {
+    // Depósito pequeño (10L) a propósito: cada parada da poca autonomía
+    // extra, así que una ruta muy larga agota el máximo de paradas antes
+    // de llegar.
+    const vehiculoPequeno: Vehiculo = { id: "v2", nombre: "Depósito pequeño", combustible: "gasolina95", consumo: 6, deposito: 10 };
+    const gasolineras = Array.from({ length: 30 }, (_, i) => {
+      const p = puntoAKm(80 * (i + 1));
+      return estacion({ lat: p.lat, lng: p.lng, precio: 1.5 });
+    });
+    const { fn } = crearMockFetch({});
+    (globalThis as { fetch: typeof fetch }).fetch = fn as unknown as typeof fetch;
+    await esperaError(
+      planificarViaje(puntoAKm(0), puntoAKm(3000), "Destino", gasolineras, vehiculoPequeno, COMBUSTIBLE, 100, null),
+      "LIMITE_PARADAS_SIN_LLEGAR"
+    );
+  });
+
+  await test("14. Coherencia del resumen económico con las paradas", async () => {
+    const { fn } = crearMockFetch({});
+    (globalThis as { fetch: typeof fetch }).fetch = fn as unknown as typeof fetch;
+    const gasolineras = [estacion({ lat: puntoAKm(30).lat, lng: puntoAKm(30).lng, precio: 1.5 })];
+    const plan = await planificarViaje(puntoAKm(0), puntoAKm(150), "Destino", gasolineras, VEHICULO, COMBUSTIBLE, 60, null);
+    assert.equal(plan.paradas.length, 1);
+    const sumaRepostajes = redondear(plan.paradas.reduce((acc, p) => acc + p.costeRepostaje, 0));
+    const sumaAhorro = redondear(plan.paradas.reduce((acc, p) => acc + p.ahorroNetoEstimado, 0));
+    assert.equal(plan.importeRepostajes, sumaRepostajes, "importeRepostajes debe ser exactamente la suma de costeRepostaje de cada parada");
+    assert.equal(plan.ahorroEstimadoParadas, sumaAhorro, "ahorroEstimadoParadas debe ser exactamente la suma de ahorroNetoEstimado de cada parada");
+    const desvioTotal = plan.paradas.reduce((acc, p) => acc + p.desvioKm, 0);
+    const precioReferencia = 1.5; // única estación del dataset
+    const costeEsperado = redondear(((plan.distanciaKm + desvioTotal) / 100) * VEHICULO.consumo * precioReferencia);
+    assert.equal(plan.costeCombustibleEstimado, costeEsperado, "el coste de combustible del trayecto debe incluir los desvíos de las paradas, sin duplicar el ahorro");
+  });
+
+  await test("15. Coherencia de escala: geometría reescalada a la distancia total de OSRM", async () => {
+    // El mock reporta una distancia total (115km) notablemente distinta de
+    // la que sumaría la geometría interpolada en línea recta real entre
+    // origen y destino (~100km): simula un caso donde la geometría de la
+    // ruta no coincide exactamente con lo que declara el proveedor.
+    const { fn } = crearMockFetch({ distanciaPrincipalKm: 115 });
+    (globalThis as { fetch: typeof fetch }).fetch = fn as unknown as typeof fetch;
+    const plan = await planificarViaje(puntoAKm(0), puntoAKm(100), "Destino", [], VEHICULO, COMBUSTIBLE, 200, null);
+    assert.equal(plan.distanciaKm, 115, "la distancia total debe ser siempre la que declara OSRM, no la suma de la geometría");
+    assert(
+      plan.avisos.some((a) => /geometr/i.test(a)),
+      "debe avisar de que la geometría se reescaló para no subestimar el combustible necesario"
+    );
   });
 
   console.log(`\n${pasados} pasadas, ${fallidos} fallidas`);

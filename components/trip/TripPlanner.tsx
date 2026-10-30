@@ -54,9 +54,17 @@ const ERRORES: Record<string, string> = {
   OSRM_ERROR: "Error al calcular la ruta. Inténtalo de nuevo.",
   AUTONOMIA_INVALIDA: "Indica cuántos km de autonomía te quedan antes de calcular.",
   SIN_PARADA_ALCANZABLE:
-    "No se ha encontrado un plan viable: con la autonomía indicada no hay ninguna gasolinera alcanzable por carretera antes de quedarte sin combustible. Revisa el dato de autonomía o reposta antes de salir.",
+    "No se ha encontrado un plan viable: con la autonomía indicada no hay ninguna gasolinera cercana a la ruta antes de quedarte sin combustible. Revisa el dato de autonomía o reposta antes de salir.",
   SIN_PARADA_ALCANZABLE_MARCA:
-    "No hay gasolineras de esa marca alcanzables con la autonomía indicada. Prueba con \"Cualquier marca\".",
+    "No hay gasolineras de esa marca cerca de la ruta con la autonomía indicada. Prueba con \"Cualquier marca\".",
+  SIN_PARADA_VERIFICADA:
+    "Hay gasolineras cerca de la ruta, pero ninguna resultó alcanzable al comprobar la distancia real por carretera. Revisa el dato de autonomía o reposta antes de salir.",
+  FALLO_VERIFICACION_PROVEEDOR:
+    "No se pudo comprobar por carretera si hay alguna gasolinera alcanzable (el proveedor de rutas no respondió). Inténtalo de nuevo en unos minutos.",
+  LIMITE_PETICIONES_AGOTADO:
+    "Se alcanzó el límite de comprobaciones de ruta antes de confirmar una parada alcanzable; puede haber opciones no comprobadas. Inténtalo de nuevo o acorta el trayecto.",
+  LIMITE_PARADAS_SIN_LLEGAR:
+    "La ruta necesitaría más paradas de las que se pueden calcular con garantías. No se ha podido completar un plan hasta el destino.",
 };
 
 interface TripPlannerProps {
@@ -367,24 +375,33 @@ export function TripPlanner({
       {/* Resultados */}
       {plan && !cargando && (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div className="bg-white rounded-xl border border-gray-100 p-3 flex flex-col gap-0.5">
               <span className="text-xs text-gray-400 font-medium">Distancia</span>
               <span className="text-base font-bold text-gray-900">{plan.distanciaKm} km</span>
             </div>
             <div className="bg-white rounded-xl border border-gray-100 p-3 flex flex-col gap-0.5">
-              <span className="text-xs text-gray-400 font-medium">Coste estimado</span>
-              <span className="text-base font-bold text-gray-900">{plan.costeEstimado.toFixed(2)}€</span>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-3 flex flex-col gap-0.5">
-              <span className="text-xs text-gray-400 font-medium">Ahorro estimado</span>
-              <span className="text-base font-bold text-green-600">+{plan.ahorroEstimado.toFixed(2)}€</span>
+              <span className="text-xs text-gray-400 font-medium">Combustible del trayecto</span>
+              <span className="text-base font-bold text-gray-900">{plan.costeCombustibleEstimado.toFixed(2)}€</span>
             </div>
           </div>
-          <p className="text-xs text-gray-400 px-1 -mt-2 flex items-start gap-1">
+          {plan.paradas.length > 0 && (
+            <p className="text-xs text-gray-600 px-1 -mt-1">
+              Vas a repostar <span className="font-semibold text-gray-900">{plan.importeRepostajes.toFixed(2)}€</span> en
+              las paradas recomendadas
+              {plan.ahorroEstimadoParadas > 0 && (
+                <> · ahorro estimado frente a la referencia:{" "}
+                  <span className="font-semibold text-green-600">+{plan.ahorroEstimadoParadas.toFixed(2)}€</span>
+                </>
+              )}
+              .
+            </p>
+          )}
+          <p className="text-xs text-gray-400 px-1 -mt-1 flex items-start gap-1">
             <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
             Con {plan.autonomiaRestanteKm} km de autonomía restante y un margen de reserva del {Math.round((1 - plan.margenReserva) * 100)}%.
-            Estimación sobre los datos actuales, no una garantía de llegada ni de precio.
+            Cada parada repostaría hasta el 75% del depósito, nunca más de lo que cabe, a partir de lo que
+            quede al llegar. Estimación sobre los datos actuales, no una garantía de llegada ni de precio.
           </p>
 
           {plan.avisos.length > 0 && (
@@ -415,6 +432,10 @@ export function TripPlanner({
                   ? "1 parada recomendada"
                   : `${plan.paradas.length} paradas recomendadas`}
               </h2>
+              <p className="text-xs text-gray-400 px-1 -mt-1">
+                Cada parada es la mejor opción entre las gasolineras cercanas comprobadas por carretera en ese
+                tramo, no necesariamente la óptima de toda la ruta.
+              </p>
               {plan.paradas.map((parada, i) => (
                 <div
                   key={parada.gasolinera.id}
@@ -444,7 +465,7 @@ export function TripPlanner({
                       )}>
                         {parada.ahorroNetoEstimado > 0
                           ? `≈ ${parada.ahorroNetoEstimado.toFixed(2)}€ de ahorro neto estimado`
-                          : "parada necesaria: el desvío no compensa frente a la media"}
+                          : "parada necesaria: el desvío no compensa frente a la referencia"}
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 mt-1">
