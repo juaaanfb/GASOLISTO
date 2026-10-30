@@ -24,10 +24,22 @@ const COLOR_PRECIO = {
   caro: "#ef4444",
 };
 
+// El precio siempre se formatea a 3 decimales ("1.699"), así que el ancho
+// del contenido es predecible. Antes este era el único divIcon del proyecto
+// sin iconSize: Leaflet le aplicaba su valor por defecto (12x12px) al <div>
+// contenedor, y con ese ancho + el padding horizontal (3px 6px = 12px) no
+// quedaba espacio para el propio texto, que se salía de la píldora de
+// color — más visible en pantallas estrechas (iPhone) al haber más
+// marcadores próximos entre sí. iconSize/iconAnchor explícitos, mismo
+// patrón que el resto de marcadores del proyecto (ver RouteMap.tsx).
+const ICONO_PRECIO_ANCHO = 46;
+const ICONO_PRECIO_ALTO = 22;
+
 function crearIconoPrecio(L: typeof import("leaflet"), precio: number, color: string, esSeleccionada: boolean) {
   return L.divIcon({
-    html: `<div style="background:${color};color:white;font-size:11px;font-weight:700;padding:3px 6px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.25);border:2px solid ${esSeleccionada ? "white" : "transparent"};transform:${esSeleccionada ? "scale(1.15)" : "scale(1)"};transition:transform 0.15s;">${precio.toFixed(3)}</div>`,
-    iconAnchor: [24, 16],
+    html: `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${color};color:white;font-size:11px;font-weight:700;line-height:1;padding:0 6px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.25);border:2px solid ${esSeleccionada ? "white" : "transparent"};box-sizing:border-box;transform:${esSeleccionada ? "scale(1.15)" : "scale(1)"};transition:transform 0.15s;-webkit-text-size-adjust:100%;text-size-adjust:100%;">${precio.toFixed(3)}</div>`,
+    iconSize: [ICONO_PRECIO_ANCHO, ICONO_PRECIO_ALTO],
+    iconAnchor: [ICONO_PRECIO_ANCHO / 2, ICONO_PRECIO_ALTO / 2],
     className: "",
   });
 }
