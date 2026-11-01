@@ -21,7 +21,11 @@ const FUNCIONES = [
   {
     Icon: Bell,
     titulo: "Alertas de precio",
-    texto: "Marca un precio objetivo y te avisamos cuando una estación baje.",
+    // Sin esta salvedad se sugería un aviso en segundo plano que la app no
+    // tiene (no hay push real sin service worker): la alerta solo se
+    // comprueba mientras la tienes abierta, como ya se explica en el
+    // detalle de cada gasolinera.
+    texto: "Marca un precio objetivo y te avisamos en la app mientras la tengas abierta.",
   },
   {
     Icon: Car,
