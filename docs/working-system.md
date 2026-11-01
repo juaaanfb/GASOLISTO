@@ -1,6 +1,6 @@
 # GASOLISTO Working System
 
-Since September 22, 2026, Codex is both the project brain and implementation engine. Claude is no longer required.
+Current agreement, updated October 30, 2026: Codex is Cerebro Central (strategy, prioritization, review and documentation). Claude Code owns implementation. This supersedes the September agreement in which Codex also implemented code.
 
 ## Source Of Truth
 
@@ -14,16 +14,17 @@ If Notion and the local repo disagree, inspect the repo first and then update No
 ## Roles
 
 - User: product owner and final taste/priority holder.
-- Codex: technical lead, product thinking partner, implementation engine, reviewer, and documentation closer.
+- Codex: technical lead, product thinking partner, reviewer, prompt author and documentation closer.
+- Claude Code: implementation engine for the bounded tasks authorized by Juan through Cerebro Central.
 - Departments: specialized product, audit, marketing, and data analysis coordinated by the central chat.
 
 ## Task Flow
 
 1. Discuss the idea with Codex.
 2. Codex defines a small scope and observable acceptance criteria.
-3. Codex implements in the local `GASOLISTO` folder.
-4. Codex reviews the resulting changes.
-5. Codex fixes issues, validates, pushes to GitHub, and verifies the Vercel deployment.
+3. Juan sends the bounded prompt to Claude Code, which implements in the local `GASOLISTO` folder. A prepared prompt is not proof that Claude has started.
+4. Codex reviews the changes and evidence, runs appropriate independent checks, and sends corrections back to Claude when needed.
+5. Claude fixes issues and validates. Local commits are allowed only within the task authorization. Push, merge and deployment require release authorization; during the current paused relaunch they are prohibited. Check automatic deployment behavior before any backup push.
 6. Codex updates Notion only when the task is closed.
 
 ## Prompt Requirements
@@ -40,6 +41,15 @@ Every implementation task should include:
 - Explicit non-goals.
 
 `docs/claude-code-prompt-template.md` remains a historical reference, not a required dependency.
+
+## Current Relaunch Constraints
+
+- The final brand and domain remain undecided; no candidate has legal clearance.
+- Keep Vercel paused. No purchases, external posts, credential or permission changes.
+- Preserve all existing work. Do not edit the same source files concurrently across sessions.
+- Local commits are not a verified off-device backup. Check the remote and deploy triggers before publishing any branch.
+- Distinguish tests run by Claude, checks repeated by Cerebro and production verification. Mocked analytics capture does not demonstrate real PostHog ingestion.
+- Current release gate: `docs/checklist-relanzamiento-2026-10-30.md`.
 
 ## Review Gate
 

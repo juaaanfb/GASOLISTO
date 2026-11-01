@@ -98,3 +98,11 @@ Vercel: 52 visitantes y 79 vistas en ventana horaria aproximada. No equiparar fu
 - Cierre informativo: typecheck/build correctos. Suite SEO/FAQ PASS local y sobre dominio publico en 390x844 y 1280x720, con privacidad, contacto, canonical, sitemap y ausencia de overflow. Capturas revisadas. Commit 0314ccf; despliegue dpl_AjkNA3cY7behnpJAmpDswr9MeuaX READY, gasolisto.com asignado. Notion actualizado. Esto no cierra consentimiento ni revision legal.
 - Pendiente prioritario: consentimiento efectivo, bloqueo previo y retirada/cambio de preferencia con pruebas de red; revisar autocapture, grabaciones, minimizacion de URL y retencion. PostHog se inicia actualmente sin una preferencia explicita; la correccion del texto no remedia ese comportamiento. Revision juridica del responsable, bases, plazos y derechos sigue abierta; no inventar identidad ni plazos legales.
 - Despues: ingestion de nuevos eventos, internos, Search Console, contenido/capturas reales y migracion Tailwind separada. No se reutilizaron cifras de ayer como nuevas metricas.
+
+## Cierre del plazo - 14 octubre 2026
+
+- Balance: docs/balance-impulso-2026-10-14.md. El roadmap no esta completo.
+- Incidencia confirmada alrededor de 17:20 UTC: dominio y paginas auxiliares HTTP 503, X-Vercel-Error DEPLOYMENT_PAUSED. El ultimo deployment aparece READY en el conector, pero eso no acredita disponibilidad. No se ha confirmado motivo ni autor de pausa. No se reactiva ni se alteran presupuestos/permisos.
+- Consentimiento sigue local, sin subir ni desplegar: pruebas de rechazo/funcionalidad pasan, aceptacion del SDK pendiente/fallida. No se afirma que este cerrado. Cambios conservados para retomar, incluido tsconfig generado por Next.
+- Main remoto comprobado: d454657d4cece86572e38544b8081b1221208a50. No se dispara otro deploy con un push documental mientras el proyecto esta pausado. Cierre registrado en Notion.
+- Se retira la automatizacion al cumplir plazo. Pendientes priorizados: pausa Vercel, consentimiento, datos internos/ingestion, Search Console, contenido con capturas y Tailwind.
