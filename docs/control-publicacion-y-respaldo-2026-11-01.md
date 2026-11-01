@@ -29,3 +29,11 @@ La aprobación inicial a Claude que prohibía toda modificación remota queda am
 6. Tras autorización de publicación, verificar GitHub→Vercel con el SHA esperado, el dominio correcto, disponibilidad pública e ingestión analítica real sin mezclar pruebas con usuarios.
 
 No olvidar este documento al preparar la publicación. No es autorización anticipada para reactivar previews o producción.
+
+## Resultado comprobado del primer respaldo remoto
+
+Subida completada de la rama autorizada, SHA d5fe55249c300c9176f69dc7504f17ff1bfcfc8b, coincidente entre HEAD y git ls-remote. Main y master remotos conservaron sus SHA anteriores. No se abrió PR ni se hizo merge.
+
+Después del push, list_deployments filtrado por rama y por ese SHA devolvió cero deployments. get_project mantuvo live:false y el mismo último deployment de main anterior. La conexión sigue existiendo; solo los previews automáticos quedaron desactivados.
+
+Este cierre documental se guardará después como un commit adicional en la misma rama de respaldo, manteniendo las protecciones. Comprobar su SHA final con git ls-remote; el SHA anterior sirve como evidencia del primer push, no necesariamente como HEAD definitivo.

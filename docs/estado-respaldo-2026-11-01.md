@@ -28,3 +28,11 @@ Fuente oficial consultada: https://vercel.com/docs/project-configuration/git-con
 Encargo acotado listo: docs/encargo-claude-respaldo-github-sin-deploy-2026-11-01.md. Claude verifica protecciones y guarda documentación antes de subir solo una rama de respaldo. No dar GitHub por actualizado hasta verificar SHA remoto y ausencia de deployment.
 
 Nombre y dominio siguen pendientes. Ninguna investigación de marca anterior equivale a garantía jurídica.
+
+## Actualización posterior: respaldo remoto desbloqueado
+
+Juan autorizó desactivar previews y completar el respaldo. Cerebro aplicó previewDeploymentsDisabled:true mediante conector y comprobó Preview Branch Tracking desmarcado en Chrome. Production continúa siguiendo main; la pausa y la conexión Git no se modificaron.
+
+Primer push autorizado completado: rama codex/respaldo-relanzamiento-2026-11-01, SHA d5fe55249c300c9176f69dc7504f17ff1bfcfc8b verificado en remoto. Cero deployments encontrados por rama y SHA tras la subida; live:false y último deployment anterior conservados. Main/master intactos. Este documento y el de control se guardan en un commit documental posterior, también respaldado en esa rama; consultar git ls-remote para HEAD definitivo.
+
+Los párrafos anteriores que describen el bloqueo son registro histórico. Respaldo externo confirmado en GitHub, sin afirmar sincronización de OneDrive. Antes del relanzamiento consultar docs/control-publicacion-y-respaldo-2026-11-01.md y restaurar previews solo cuando se autorice.
