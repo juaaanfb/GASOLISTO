@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { MapPin, Navigation, Navigation2, ExternalLink, Car, Fuel, LocateFixed, Gauge, AlertTriangle, Info } from "lucide-react";
 import type { Coordenadas, Gasolinera, Vehiculo, TipoCombustible } from "@/types";
@@ -102,6 +102,16 @@ export function TripPlanner({
   const [autonomiaTexto, setAutonomiaTexto] = useState("");
   const [autonomiaError, setAutonomiaError] = useState<string | null>(null);
   const autonomiaMaximaVehiculo = vehiculo ? (vehiculo.deposito / vehiculo.consumo) * 100 : null;
+
+  // Si cambia cualquier dato que influye en el plan ya calculado (origen,
+  // destino, marca preferida, autonomía o vehículo activo), se invalida:
+  // sin esto, un plan calculado con una autonomía o un destino antiguos se
+  // quedaba en pantalla —mapa, paradas y texto incluidos— como si siguiera
+  // vigente para los valores que se ven ahora en el formulario.
+  useEffect(() => {
+    setPlan(null);
+    setError(null);
+  }, [origenTexto, destinoTexto, destinoCoords, marcaPreferida, autonomiaTexto, vehiculo]);
 
   // Valida el texto de autonomía sin mutar el estado de error salvo que se
   // pida explícitamente (evita marcar error en cada tecleo mientras se
