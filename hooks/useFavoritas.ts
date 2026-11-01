@@ -18,7 +18,12 @@ export function useFavoritas() {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      localStorage.setItem(KEY, JSON.stringify(Array.from(next)));
+      // Si el almacenamiento falla (cuota llena, modo privado, bloqueado...)
+      // la favorita se mantiene en memoria para esta sesión; sin este
+      // try/catch, el error no capturado rompía todo el render de la app.
+      try {
+        localStorage.setItem(KEY, JSON.stringify(Array.from(next)));
+      } catch {}
       return next;
     });
   }, []);

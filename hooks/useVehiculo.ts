@@ -43,13 +43,19 @@ export function useVehiculo() {
 
   const vehiculoActivo = vehiculos.find((v) => v.id === activoId) ?? vehiculos[0];
 
+  // Igual que al leer: si el almacenamiento falla (cuota llena, modo
+  // privado, bloqueado...) el cambio se mantiene en memoria para esta
+  // sesión en vez de dejar un error no capturado romper el render de toda
+  // la app (p.ej. al guardar un vehículo o marcar una favorita).
   const guardarVehiculo = useCallback((vehiculo: Vehiculo) => {
     setVehiculos((prev) => {
       const existe = prev.findIndex((v) => v.id === vehiculo.id);
       const nuevos = existe >= 0
         ? prev.map((v) => (v.id === vehiculo.id ? vehiculo : v))
         : [...prev, vehiculo];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nuevos));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(nuevos));
+      } catch {}
       return nuevos;
     });
   }, []);
@@ -58,11 +64,15 @@ export function useVehiculo() {
     setVehiculos((prev) => {
       const nuevos = prev.filter((v) => v.id !== id);
       if (nuevos.length === 0) nuevos.push(VEHICULO_DEFAULT);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nuevos));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(nuevos));
+      } catch {}
       if (activoId === id) {
         const nuevoActivo = nuevos[0].id;
         setActivoId(nuevoActivo);
-        localStorage.setItem(ACTIVO_KEY, nuevoActivo);
+        try {
+          localStorage.setItem(ACTIVO_KEY, nuevoActivo);
+        } catch {}
       }
       return nuevos;
     });
@@ -70,7 +80,9 @@ export function useVehiculo() {
 
   const seleccionarVehiculo = useCallback((id: string) => {
     setActivoId(id);
-    localStorage.setItem(ACTIVO_KEY, id);
+    try {
+      localStorage.setItem(ACTIVO_KEY, id);
+    } catch {}
   }, []);
 
   const crearVehiculo = useCallback((): Vehiculo => ({

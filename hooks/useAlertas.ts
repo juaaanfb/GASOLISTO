@@ -23,10 +23,15 @@ export function useAlertas() {
     } catch {}
   }, []);
 
+  // Igual que en favoritas/vehículo: un localStorage.setItem sin capturar
+  // (cuota llena, modo privado, bloqueado...) rompía el render de toda la
+  // app en vez de solo no persistir el cambio.
   const guardarAlerta = useCallback((alerta: AlertaConfig) => {
     setAlertas((prev) => {
       const next = [...prev.filter((a) => a.gasolineraId !== alerta.gasolineraId), alerta];
-      localStorage.setItem(KEY, JSON.stringify(next));
+      try {
+        localStorage.setItem(KEY, JSON.stringify(next));
+      } catch {}
       return next;
     });
   }, []);
@@ -34,7 +39,9 @@ export function useAlertas() {
   const eliminarAlerta = useCallback((gasolineraId: string) => {
     setAlertas((prev) => {
       const next = prev.filter((a) => a.gasolineraId !== gasolineraId);
-      localStorage.setItem(KEY, JSON.stringify(next));
+      try {
+        localStorage.setItem(KEY, JSON.stringify(next));
+      } catch {}
       return next;
     });
   }, []);
@@ -46,7 +53,9 @@ export function useAlertas() {
 
   const setResumenDiario = useCallback((v: boolean) => {
     setResumenDiarioState(v);
-    localStorage.setItem(RESUMEN_KEY, String(v));
+    try {
+      localStorage.setItem(RESUMEN_KEY, String(v));
+    } catch {}
   }, []);
 
   return { alertas, resumenDiario, guardarAlerta, eliminarAlerta, obtenerAlerta, setResumenDiario };
