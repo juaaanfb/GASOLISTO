@@ -50,16 +50,26 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Page navigations: network-first so prices/content stay fresh, cached shell as offline fallback.
+  // Page navigations: network-first so prices/content stay fresh, cached
+  // shell as offline fallback. Solo se refresca el shell ("/") cuando la
+  // navegación es realmente a "/": guardarlo bajo esa clave para CUALQUIER
+  // ruta visitada habría servido esa otra página bajo "/" la próxima vez
+  // que fallara una navegación sin conexión. El guardado va en
+  // event.waitUntil() porque sin esperarlo, el propio evento podía darse
+  // por completado (tras responder) antes de que la escritura en caché
+  // terminara, dejando el shell sin refrescar nunca en la práctica.
   if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          caches.open(SHELL_CACHE).then((cache) => cache.put("/", response.clone()));
-          return response;
-        })
-        .catch(() => caches.match("/"))
-    );
+    const redEsperada = fetch(request);
+    if (url.pathname === "/") {
+      event.waitUntil(
+        redEsperada
+          .then((response) => {
+            if (response.ok) return caches.open(SHELL_CACHE).then((cache) => cache.put("/", response.clone()));
+          })
+          .catch(() => {})
+      );
+    }
+    event.respondWith(redEsperada.catch(() => caches.match("/")));
     return;
   }
 
