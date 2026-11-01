@@ -145,7 +145,7 @@ No se declara "todo perfecto". Explícitamente **no comprobado** o **no exhausti
 - Flujo 4: descuentos no probados con entradas límite en vivo (código revisado, protegido por try/catch); vehículo no probado con JSON corrupto en `localStorage` en vivo (lectura ya protegida por try/catch desde antes).
 - Flujo 6: no se ha repetido en el navegador cada sub-caso individual de la lista del encargo (depósito lleno, origen sin GPS, proveedor lento/error, cada combinación de marca preferida); esos casos están cubiertos a nivel de lógica por las 18 pruebas deterministas, no verificados uno a uno en la UI real en esta ronda.
 - Accesibilidad: sin revisión de foco dentro de StationDetail/VehicleSelector/VehicleForm; sin prueba de zoom del navegador; sin repetición en WebKit.
-- PWA: sin prueba de desconexión de red real (herramienta no disponible en este entorno); verificación basada en inspección directa de Cache API.
+- PWA: ver adenda del 01/11/2026 — se consiguió una prueba de desconexión real (parando el propio servidor, no por inspección de caché).
 - Rendimiento: sin medición bajo condiciones de red/CPU restringidas ni comparación formal antes/después (no hubo corrección de rendimiento que lo requiriera).
 - No se ha comprobado iPhone físico (ya documentado como pendiente en la entrega anterior).
 - No se ha tocado nada de marca, dominio, ni la documentación de Cerebro.
@@ -154,6 +154,103 @@ No se declara "todo perfecto". Explícitamente **no comprobado** o **no exhausti
 
 - Añadir `role="dialog"`/focus trap a `StationDetail`, `VehicleSelector` y `VehicleForm` (actualmente solo BottomSheet gana Escape cuando `onClose` está definido, que no es el caso de esas tres pantallas).
 - Añadir validación de límite superior en `VehicleForm` (consumo/depósito) coherente con los atributos `min`/`max` ya presentes en los inputs.
-- Automatizar una prueba de service worker con desconexión real (hoy requeriría una herramienta de red distinta a las disponibles en este entorno).
+
+---
+
+## Adenda (01/11/2026): cierre de pendientes señalados por Cerebro Central
+
+Cerebro Central revisó la entrega anterior y pidió cerrar 5 puntos concretos, sin implementar ninguna otra mejora opcional. Esta adenda los cubre uno a uno. Rama y commits nuevos sobre los mismos `lote4-revision-integral`, sin reescribir ninguno de los 8 commits anteriores.
+
+### 1. Viajes: resultados obsoletos — CORREGIDO (y verificado que el fallo era real)
+
+El `useEffect` de invalidación ya limpiaba `plan`/`error` al cambiar un parámetro, pero no impedía que `calcular()` — ya en vuelo con los parámetros ANTERIORES — publicara su resultado al resolver más tarde. Se añadió `vigenteRef` (contador de versión): se incrementa en el mismo efecto de invalidación (ahora también con `combustible` y `coordenadas` —origen GPS— entre sus dependencias, que antes faltaban) y `calcular()` captura una instantánea (`miVersion`) al empezar; tanto el `setPlan(resultado)` de éxito como el `setError(...)` de fallo se descartan si la versión ya cambió al resolver. `calculandoRef`/`setCargando(false)` siguen ejecutándose siempre en el `finally`, para no bloquear cálculos nuevos.
+
+**Prueba determinista añadida:** `scripts/smoke-race-conditions.cjs` (escenario "Viajes"). Retiene la respuesta de OSRM con una promesa controlada por el test, cambia la autonomía de 200 a 5 km mientras la petición sigue en vuelo, libera la respuesta retrasada y comprueba que el plan de 200 km nunca aparece, que no queda ningún bloque de resultados en pantalla, y que el formulario sigue operativo. **Verificado que el test falla sin la corrección** (revertida temporalmente, restaurada después: `git diff` vacío tras la verificación).
+
+Archivos: `components/trip/TripPlanner.tsx`, `scripts/smoke-race-conditions.cjs`.
+
+### 2. Almacenamiento: lectura y estructura — CORREGIDO
+
+- `cargarActivoId()` en `useVehiculo.ts` no tenía try/catch (a diferencia de `cargarVehiculos()`); corregido.
+- Se añadió validación de estructura antes de usar cualquier dato recuperado de `localStorage`, en los cuatro hooks:
+  - `useVehiculo.ts`: `JSON.parse` debe dar un array; cada elemento se valida contra la forma real de `Vehiculo` (id/nombre string, combustible en `COMBUSTIBLES`, consumo/depósito numéricos finitos) con `esVehiculoValido()`. Las entradas inválidas se descartan SOLO para esta sesión; si no queda ninguna válida, se usa `VEHICULO_DEFAULT` en memoria.
+  - `useFavoritas.ts`: debe ser un array de strings; si no, se ignora.
+  - `useAlertas.ts`: cada alerta se valida con `esAlertaValida()` (gasolineraId string, combustible conocido, umbral numérico finito); lecturas de `alertas` y `resumenDiario` en try/catch separados para que un fallo en una clave no tape la otra.
+  - `useDescuentos.ts`: debe ser un objeto plano (no array); se conservan solo las claves cuya marca es conocida (`MARCAS`) y cuyo valor es un número finito.
+- **Ninguno de los cuatro hooks borra ni reescribe el valor original en `localStorage`** al encontrarlo inválido — la limpieza es solo en memoria, para esta sesión. Esto es una limitación de persistencia deliberada y documentada aquí: si el dato guardado tiene forma inesperada, se pierde para esa sesión (se usa un valor por defecto o se descarta esa entrada) pero el original permanece en el dispositivo por si una versión futura puede interpretarlo.
+
+**Verificación:** typecheck PASS; prueba manual en el navegador (marcar favorita, guardar vehículo, recargar) confirma que datos VÁLIDOS se siguen leyendo y mostrando con normalidad tras el cambio (no se trata de una regresión silenciosa). No se ha construido una prueba automatizada específica de "JSON corrupto" (queda como pendiente, ver abajo) — la validación se revisó manualmente leyendo el código y probando el camino feliz.
+
+Archivos: `hooks/useVehiculo.ts`, `hooks/useFavoritas.ts`, `hooks/useAlertas.ts`, `hooks/useDescuentos.ts`.
+
+### 3. Autocompletado: respuestas tardías/fuera de orden — CORREGIDO
+
+`clearTimeout()` solo cancela un debounce que todavía no ha lanzado la petición; una vez en vuelo, no hay forma de cancelarla, y su respuesta podía llegar después de confirmar, seleccionar, limpiar o seguir escribiendo, reabriendo el desplegable con resultados de una consulta ya abandonada. Se añadió `busquedaIdRef` (mismo patrón que en el punto 1): se incrementa en `buscar()` (en cada tecleo, antes de entrar en el debounce), en `seleccionar()`, en el manejador de Enter, y en los dos casos en los que el efecto salta la búsqueda (valor ya seleccionado o ya confirmado por quien usa el input). Solo se aplica un resultado si su id sigue siendo el vigente cuando la petición resuelve.
+
+**Pruebas deterministas añadidas:** `scripts/smoke-race-conditions.cjs`, dos escenarios: "cambiar la consulta" (se escribe "Mad", se retiene su respuesta, se cambia a "Valencia" mientras sigue en vuelo, se confirma que el desplegable muestra Valencia y nunca el resultado tardío de "Mad") y "limpiar" (mismo retraso, pero el campo se vacía en vez de cambiar de consulta). **Verificado que ambos fallan sin la corrección** (revertida temporalmente, restaurada después).
+
+No se ha añadido un escenario dedicado para "confirmar"/"seleccionar": ambos pasan por el mismo `busquedaIdRef` y por el mismo mecanismo ya cubierto por los dos escenarios anteriores; se consideró cobertura suficiente dado el alcance de "pruebas focalizadas" pedido.
+
+Archivos: `components/trip/AutocompleteInput.tsx`, `scripts/smoke-race-conditions.cjs`.
+
+### 4. PWA: desconexión y recuperación — CORREGIDO (fallback del service worker) y PROBADO con desconexión real
+
+**Hallazgo adicional durante esta verificación:** el `catch(() => caches.match("/"))` del manejador de navegación se aplicaba a CUALQUIER ruta, no solo a `"/"`. Si la red fallaba al navegar a `/privacidad` o `/como-funciona`, el service worker habría servido el HTML de la home bajo esa URL — contenido equivocado presentado como la página pedida, exactamente lo que se pidió evitar. Corregido: el fallback al shell cacheado solo se aplica cuando `url.pathname === "/"`; para el resto de rutas, si la red falla, se deja que el navegador muestre su propia pantalla de sin conexión (honesto) en vez de sustituir el contenido.
+
+**Sobre la herramienta de prueba (documentado con detalle porque es relevante para quien repita esto):** se intentó `context.setOffline()` de Playwright; no bloqueó el `fetch()` que el propio service worker hace al manejar una navegación (confirmado con `response.fromServiceWorker() === true` y cabeceras reales del servidor en la respuesta recibida "sin conexión"). Se probó también abortar todas las peticiones con `page.route("**/*", route => route.abort())`: mismo resultado. Se probó enviar `Network.emulateNetworkConditions({offline:true})` directamente a la sesión CDP del propio service worker (vía `Target.attachToTarget`): mismo resultado. Las tres vías fallan en este entorno/versión de Playwright (1.49.1) para peticiones que el service worker origina desde su propio hilo — es una limitación confirmada de la herramienta, no un comportamiento del producto.
+
+Para conseguir una desconexión **genuinamente real** (no emulada), la prueba final controla su propio proceso `next start` y lo **para de verdad** (ECONNREFUSED real) en vez de emular la red:
+1. Arranca el servidor de producción, confirma el service worker `activated`.
+2. Para el proceso del servidor.
+3. Navega a `"/"` → se recupera del shell cacheado, título correcto. **PASS.**
+4. Navega a `/privacidad` (nunca visitada online antes, para no contaminar el resultado con la caché HTTP del navegador) → la navegación **falla honestamente** (`net::ERR_FAILED`), nunca se muestra el contenido de la home bajo esa URL. **PASS.**
+5. Reinicia el servidor → `/privacidad` recupera su contenido real. **PASS.**
+
+**Verificado que el test falla sin la corrección** (revertido temporalmente el fallback para todas las rutas, restaurado después: `git diff` vacío).
+
+Archivos: `public/sw.js`, `scripts/smoke-pwa-offline.cjs` (incluye instrucciones de reproducción en su cabecera).
+
+### 5. Entorno de pruebas: `.env.local` sintético — DOCUMENTADO Y ELIMINADO
+
+Este checkout no tenía ningún `NEXT_PUBLIC_POSTHOG_KEY` configurado, así que `scripts/smoke-consent.cjs` no podía ejercitar el camino de consentimiento→captura (`posthog.init()` nunca se llamaba). Se creó temporalmente un `.env.local` (gitignorado por el `.env*.local` ya existente en `.gitignore`; nunca se tocó ningún archivo ajeno) con `NEXT_PUBLIC_POSTHOG_KEY=phc_test_local_smoke_only_not_real` — un valor sin ambigüedad posible con una clave real, usado solo porque `smoke-consent.cjs` intercepta y simula el 100% de las peticiones a `posthog.com` con `page.route()` (nunca llegó tráfico al proyecto real 250159).
+
+**Para que esto no quede como configuración normal reutilizable en un futuro build de publicación, el archivo se ha eliminado** al terminar de usarlo (confirmado: `ls .env*` no devuelve nada en este checkout). Quien quiera repetir `smoke-consent.cjs` debe recrearlo expresamente:
+```bash
+echo "NEXT_PUBLIC_POSTHOG_KEY=phc_test_local_smoke_only_not_real" > .env.local
+# ... ejecutar smoke-consent.cjs ...
+rm .env.local   # o sustituirlo por la clave real antes de cualquier build de publicación
+```
+
+### Suite final ejecutada tras los 4 puntos anteriores
+
+```bash
+npx tsc --noEmit                              # PASS
+npm run build                                 # PASS (build de verificación final, con el workaround de NEXT_BUILD_DIR documentado en la entrega original; tsconfig.json restaurado, git diff vacío)
+npx tsx scripts/test-autonomia.ts             # 18 pasadas, 0 fallidas (sin cambios en lib/routing.ts esta ronda)
+node scripts/smoke-ui.cjs                     # PASS (6 escenarios)
+node scripts/smoke-consent.cjs                # PASS (con el .env.local temporal descrito arriba)
+node scripts/smoke-seo.cjs                    # PASS
+node scripts/smoke-race-conditions.cjs        # PASS (3 escenarios nuevos: viaje obsoleto, autocompletado cambiar/limpiar)
+node scripts/smoke-pwa-offline.cjs            # PASS (servidor real parado/reiniciado; ver punto 4)
+```
+
+### Diferenciación comprobado / corregido / pendiente de esta adenda
+
+**Corregido y verificado con prueba automatizada que falla sin el fix:**
+- #1 Viajes: resultado obsoleto tras cambiar parámetros durante el cálculo.
+- #3 Autocompletado: respuesta tardía/fuera de orden reabriendo el desplegable (2 escenarios).
+- #4 PWA: fallback del shell sirviendo contenido equivocado bajo otra ruta.
+
+**Corregido y verificado manualmente (sin prueba automatizada dedicada):**
+- #2 Validación de estructura en los 4 hooks de almacenamiento; `cargarActivoId` protegido.
+
+**Comprobado con una limitación de herramienta documentada, no sustituida por inspección de caché:**
+- #4 La desconexión real se consiguió parando el servidor controlado por el propio script, no mediante emulación de red (`context.setOffline`, `page.route` abort y CDP `Network.emulateNetworkConditions` sobre la sesión del service worker se probaron los tres y ninguno bloquea el fetch del propio SW en este entorno — limitación documentada, no un pendiente oculto).
+
+**Pendiente, explícitamente no implementado en esta adenda:**
+- Prueba automatizada específica de JSON corrupto/con forma inesperada en `localStorage` para los 4 hooks (la validación se verificó manualmente y por lectura de código, no con un test dedicado).
+- Todo lo ya listado como pendiente en la entrega original del 30/10 que esta adenda no cubre (foco en StationDetail/VehicleSelector/VehicleForm, zoom del navegador, WebKit, iPhone físico, validación de límite superior en VehicleForm, rendimiento bajo condiciones controladas).
+
+No se ha implementado ninguna mejora opcional fuera de estos 5 puntos, conforme a lo pedido.
 
 Entrega para revisión de Cerebro Central. Me detengo aquí.
