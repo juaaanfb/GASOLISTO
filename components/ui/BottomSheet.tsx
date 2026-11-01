@@ -34,6 +34,18 @@ export function BottomSheet({
     return () => { document.body.style.overflow = ""; };
   }, [abierto, onClose]);
 
+  // Misma posibilidad de cerrar que ya ofrece el click en el backdrop,
+  // también por teclado: antes Escape no hacía nada en las vistas con
+  // overlay cerrable (p.ej. Lista).
+  useEffect(() => {
+    if (!abierto || !onClose) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose!();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [abierto, onClose]);
+
   return (
     <>
       {/* Overlay */}
