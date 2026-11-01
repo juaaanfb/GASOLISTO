@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Percent } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { PROGRAMAS_DESCUENTO } from "@/lib/marcas";
@@ -13,6 +13,40 @@ interface DescuentosFormProps {
 
 export function DescuentosForm({ descuentos, onGuardar, onCerrar }: DescuentosFormProps) {
   const [form, setForm] = useState<Descuentos>(descuentos);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Mismo patrón que WelcomeModal: foco inicial y atrapado dentro del
+  // diálogo, Escape para cerrar — sin esto el teclado se escapaba a
+  // controles de fondo tapados por el overlay.
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onCerrar();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onCerrar]);
 
   const set = (marca: keyof Descuentos, valor: string) => {
     const num = parseFloat(valor);
@@ -25,21 +59,30 @@ export function DescuentosForm({ descuentos, onGuardar, onCerrar }: DescuentosFo
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center">
+    <div
+      className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="descuentos-modal-title"
+    >
       <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
 
-      <div className="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl shadow-card-hover max-h-[90vh] overflow-y-auto">
+      <div
+        ref={panelRef}
+        className="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl shadow-card-hover max-h-[90vh] overflow-y-auto"
+      >
         <div className="p-5 pb-3 flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">
               <Percent className="w-4.5 h-4.5 text-green-600" />
             </div>
             <div>
-              <h2 className="font-bold text-gray-900 text-base leading-tight">Mis descuentos</h2>
+              <h2 id="descuentos-modal-title" className="font-bold text-gray-900 text-base leading-tight">Mis descuentos</h2>
               <p className="text-xs text-gray-400">Waylet, Gow, tarjetas de fidelización…</p>
             </div>
           </div>
           <button
+            ref={closeButtonRef}
             onClick={onCerrar}
             aria-label="Cerrar"
             className="p-1.5 -mr-1.5 -mt-1.5 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
