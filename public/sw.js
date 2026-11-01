@@ -68,8 +68,18 @@ self.addEventListener("fetch", (event) => {
           })
           .catch(() => {})
       );
+      // El shell cacheado solo es un sustituto honesto de "/" sin
+      // conexión: solo se sirve como respuesta de fallback para "/" misma.
+      event.respondWith(redEsperada.catch(() => caches.match("/")));
+    } else {
+      // Otras rutas (p.ej. /privacidad, /como-funciona) nunca se
+      // cachean como página completa. Si la red falla aquí, NO se cae al
+      // shell: hacerlo serviría el HTML de la home bajo esta otra ruta,
+      // mostrando contenido equivocado como si fuera la página pedida.
+      // Se deja que el navegador muestre su propia pantalla de sin
+      // conexión en su lugar.
+      event.respondWith(redEsperada);
     }
-    event.respondWith(redEsperada.catch(() => caches.match("/")));
     return;
   }
 
