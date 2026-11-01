@@ -44,6 +44,7 @@ No se ha repetido el build ni toda la suite visual por Cerebro. No se ha comprob
 
 ## Publicación y comprobación pública, aún no autorizadas
 
+- Revisar primero docs/control-publicacion-y-respaldo-2026-11-01.md: previews automáticos desactivados temporalmente para respaldo por autorización de Juan. GitHub sigue conectado. Decidir/restaurar seguimiento Preview, revisar regla de rama en vercel.json y la asignación de dominios de producción antes de relanzar; no reactivar sin autorización.
 - Conectar dominio/DNS/HTTPS y comprobar proyecto, variables y versión desplegada sin exponer secretos.
 - No usar redirecciones del dominio anterior sin comprobar titularidad, control y alcance legal.
 - Comprobar uso real completo, estados de carga/error/vacío y enlaces de navegación.
