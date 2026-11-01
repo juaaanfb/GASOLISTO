@@ -92,6 +92,12 @@ export function TripPlanner({
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const calculandoRef = useRef(false);
+  // Versión de los parámetros efectivos del plan. calcular() captura su
+  // valor al empezar; si cambia antes de que la petición en curso resuelva
+  // (éxito o error), esa resolución se descarta sin tocar el estado — evita
+  // que una respuesta antigua (de una autonomía, destino, origen, vehículo
+  // o combustible ya superados) sobrescriba el plan vigente.
+  const vigenteRef = useRef(0);
   const faltaOrigen = !ubicacionDisponible && !origenTexto.trim();
 
   // Autonomía restante: texto libre como en el formulario de vehículo (se
@@ -103,15 +109,20 @@ export function TripPlanner({
   const [autonomiaError, setAutonomiaError] = useState<string | null>(null);
   const autonomiaMaximaVehiculo = vehiculo ? (vehiculo.deposito / vehiculo.consumo) * 100 : null;
 
-  // Si cambia cualquier dato que influye en el plan ya calculado (origen,
-  // destino, marca preferida, autonomía o vehículo activo), se invalida:
-  // sin esto, un plan calculado con una autonomía o un destino antiguos se
-  // quedaba en pantalla —mapa, paradas y texto incluidos— como si siguiera
-  // vigente para los valores que se ven ahora en el formulario.
+  // Si cambia cualquier dato que influye en el plan ya calculado (origen de
+  // texto libre, coordenadas GPS cuando no hay origen escrito, destino,
+  // marca preferida, autonomía, vehículo activo o combustible), se
+  // invalida: sin esto, un plan calculado con valores antiguos se quedaba
+  // en pantalla —mapa, paradas y texto incluidos— como si siguiera vigente
+  // para los valores que se ven ahora en el formulario. Además de limpiar
+  // el estado visible, se incrementa vigenteRef para que una petición ya
+  // en curso (lanzada con los valores anteriores) no pueda sobrescribirlo
+  // cuando resuelva más tarde — ver calcular().
   useEffect(() => {
+    vigenteRef.current++;
     setPlan(null);
     setError(null);
-  }, [origenTexto, destinoTexto, destinoCoords, marcaPreferida, autonomiaTexto, vehiculo]);
+  }, [origenTexto, destinoTexto, destinoCoords, marcaPreferida, autonomiaTexto, vehiculo, combustible, coordenadas]);
 
   // Valida el texto de autonomía sin mutar el estado de error salvo que se
   // pida explícitamente (evita marcar error en cada tecleo mientras se
@@ -175,6 +186,12 @@ export function TripPlanner({
     }
     setAutonomiaError(null);
     calculandoRef.current = true;
+    // Instantánea de la versión vigente en el momento de lanzar esta
+    // petición. Si vigenteRef cambia antes de que resuelva (el usuario
+    // tocó origen, destino, autonomía, marca, vehículo o combustible
+    // mientras tanto), su resultado o error se descarta más abajo en vez
+    // de sobrescribir el plan/error que ya corresponde a los datos nuevos.
+    const miVersion = vigenteRef.current;
     setCargando(true);
     setError(null);
     setPlan(null);
@@ -206,6 +223,7 @@ export function TripPlanner({
         estado.valor,
         marcaPreferida
       );
+      if (vigenteRef.current !== miVersion) return; // respuesta obsoleta: se descarta, no se publica ni se registra
       setPlan(resultado);
       track("trip_calculated", {
         distance_bucket: bucketDistanciaRuta(resultado.distanciaKm),
@@ -215,6 +233,7 @@ export function TripPlanner({
         has_custom_origin: origenTexto.trim().length > 0,
       });
     } catch (e: unknown) {
+      if (vigenteRef.current !== miVersion) return; // error de una petición obsoleta: se descarta igual
       const msg = e instanceof Error ? e.message : "";
       track("trip_calculation_failed", {
         reason: Object.hasOwn(ERRORES, msg) ? msg : "UNKNOWN",
@@ -226,6 +245,9 @@ export function TripPlanner({
         setError(ERRORES[msg] ?? "Error al planificar el viaje. Inténtalo de nuevo.");
       }
     } finally {
+      // Esto SIEMPRE se ejecuta, sea o no obsoleta esta petición: si no,
+      // una invalidación durante el cálculo dejaría calculandoRef/cargando
+      // bloqueados y ninguna petición nueva podría lanzarse nunca.
       calculandoRef.current = false;
       setCargando(false);
     }

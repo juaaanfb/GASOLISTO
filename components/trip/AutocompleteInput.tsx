@@ -48,9 +48,19 @@ export function AutocompleteInput({
   // tras seleccionar y reabría el desplegable como si hubiese que confirmar
   // otra vez.
   const ultimoSeleccionadoRef = useRef<string | null>(null);
+  // Identifica cada intención de búsqueda. clearTimeout(timerRef) solo
+  // cancela un debounce que TODAVÍA no ha lanzado buscarLugares; una vez
+  // en vuelo, cancelar el temporizador no cancela esa petición de red, y
+  // podía llegar tarde y reabrir el desplegable con resultados de una
+  // consulta ya abandonada (p.ej. tras confirmar con Enter, seleccionar
+  // una sugerencia, limpiar el campo o seguir escribiendo). Cualquier
+  // cambio de intención incrementa este contador; solo se aplica el
+  // resultado cuya id siga siendo la vigente cuando resuelve.
+  const busquedaIdRef = useRef(0);
 
   const buscar = useCallback((texto: string) => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    const miId = ++busquedaIdRef.current;
     if (texto.length < 2) {
       setSugerencias([]);
       setAbierto(false);
@@ -58,6 +68,7 @@ export function AutocompleteInput({
     }
     timerRef.current = setTimeout(async () => {
       const resultados = await buscarLugares(texto, { bias, soloLocalidades }).catch(() => []);
+      if (busquedaIdRef.current !== miId) return; // respuesta tardía o fuera de orden: se descarta
       setSugerencias(resultados);
       setAbierto(resultados.length > 0);
     }, 350);
@@ -70,12 +81,16 @@ export function AutocompleteInput({
     // mismo texto), la búsqueda debe volver a funcionar con normalidad.
     if (ultimoSeleccionadoRef.current !== null && value === ultimoSeleccionadoRef.current) {
       ultimoSeleccionadoRef.current = null;
+      busquedaIdRef.current++; // invalida cualquier búsqueda anterior en vuelo
       return;
     }
     // Mismo caso que arriba pero para una confirmación resuelta fuera del
     // propio componente (p.ej. Enter sobre texto libre que el padre
     // resuelve a un label completo y fija como "value").
-    if (valorConfirmado != null && value === valorConfirmado) return;
+    if (valorConfirmado != null && value === valorConfirmado) {
+      busquedaIdRef.current++;
+      return;
+    }
     buscar(value);
   }, [value, buscar, valorConfirmado]);
 
@@ -91,6 +106,7 @@ export function AutocompleteInput({
   }, []);
 
   const seleccionar = (s: LugarSugerido) => {
+    busquedaIdRef.current++; // invalida cualquier búsqueda anterior en vuelo
     ultimoSeleccionadoRef.current = s.label;
     onChange(s.label);
     onSeleccionar?.(s);
@@ -119,6 +135,7 @@ export function AutocompleteInput({
             // llegar después y reabrir el desplegable igualmente.
             if (e.key === "Enter") {
               if (timerRef.current) clearTimeout(timerRef.current);
+              busquedaIdRef.current++; // invalida cualquier búsqueda en vuelo
               setSugerencias([]);
               setAbierto(false);
             }
