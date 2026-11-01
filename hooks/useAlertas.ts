@@ -11,14 +11,35 @@ export interface AlertaConfig {
 const KEY = "gasolisto_alertas";
 const RESUMEN_KEY = "gasolisto_resumen_diario";
 
+const COMBUSTIBLES_VALIDOS: readonly string[] = ["gasolina95", "gasolina98", "diesel", "glp"];
+
+function esAlertaValida(a: unknown): a is AlertaConfig {
+  if (!a || typeof a !== "object") return false;
+  const o = a as Record<string, unknown>;
+  return (
+    typeof o.gasolineraId === "string" && o.gasolineraId.length > 0 &&
+    typeof o.combustible === "string" && COMBUSTIBLES_VALIDOS.includes(o.combustible) &&
+    typeof o.umbral === "number" && Number.isFinite(o.umbral)
+  );
+}
+
 export function useAlertas() {
   const [alertas, setAlertas] = useState<AlertaConfig[]>([]);
   const [resumenDiario, setResumenDiarioState] = useState(false);
 
   useEffect(() => {
+    // Dos try/catch separados: un valor corrupto en una clave no debe
+    // impedir leer la otra. Un JSON.parse que no sea un array de alertas
+    // válidas (null, objeto suelto, entradas sin los campos esperados) se
+    // ignora para esta sesión sin tocar lo guardado.
     try {
       const stored = localStorage.getItem(KEY);
-      if (stored) setAlertas(JSON.parse(stored) as AlertaConfig[]);
+      if (stored) {
+        const parsed: unknown = JSON.parse(stored);
+        if (Array.isArray(parsed)) setAlertas(parsed.filter(esAlertaValida));
+      }
+    } catch {}
+    try {
       setResumenDiarioState(localStorage.getItem(RESUMEN_KEY) === "true");
     } catch {}
   }, []);

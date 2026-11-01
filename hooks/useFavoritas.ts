@@ -9,7 +9,14 @@ export function useFavoritas() {
   useEffect(() => {
     try {
       const stored = localStorage.getItem(KEY);
-      if (stored) setFavoritas(new Set(JSON.parse(stored) as string[]));
+      if (!stored) return;
+      const parsed: unknown = JSON.parse(stored);
+      // Un valor guardado con otra forma (null, objeto, array con algo que
+      // no sea un id de texto...) no es una lista de favoritas utilizable:
+      // se ignora para esta sesión sin tocar lo que haya en localStorage.
+      if (Array.isArray(parsed) && parsed.every((id) => typeof id === "string")) {
+        setFavoritas(new Set(parsed));
+      }
     } catch {}
   }, []);
 

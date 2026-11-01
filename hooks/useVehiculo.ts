@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import type { Vehiculo, TipoCombustible } from "@/types";
+import { COMBUSTIBLES, type Vehiculo, type TipoCombustible } from "@/types";
 
 const STORAGE_KEY = "gasolisto_vehiculos";
 const ACTIVO_KEY = "gasolisto_vehiculo_activo";
@@ -13,12 +13,36 @@ const VEHICULO_DEFAULT: Vehiculo = {
   deposito: 50,
 };
 
+// JSON.parse de un valor guardado por versiones futuras/externas puede
+// devolver null, un número, un array vacío, objetos sin alguno de estos
+// campos, etc. — nada de eso es un Vehiculo utilizable, y usarlo tal cual
+// (p.ej. v.consumo en un cálculo) rompería el render en vez de solo
+// ignorar esa entrada.
+function esVehiculoValido(v: unknown): v is Vehiculo {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return (
+    typeof o.id === "string" && o.id.length > 0 &&
+    typeof o.nombre === "string" &&
+    typeof o.combustible === "string" && o.combustible in COMBUSTIBLES &&
+    typeof o.consumo === "number" && Number.isFinite(o.consumo) &&
+    typeof o.deposito === "number" && Number.isFinite(o.deposito)
+  );
+}
+
+// Nunca borra ni reescribe lo guardado solo por encontrarlo inválido: una
+// entrada corrupta o con forma inesperada se descarta para ESTA sesión
+// (se usa el vehículo por defecto en memoria), pero el dato original en
+// localStorage se deja intacto por si una versión futura puede leerlo.
 function cargarVehiculos(): Vehiculo[] {
   if (typeof window === "undefined") return [VEHICULO_DEFAULT];
   try {
     const guardados = localStorage.getItem(STORAGE_KEY);
     if (!guardados) return [VEHICULO_DEFAULT];
-    return JSON.parse(guardados);
+    const parsed: unknown = JSON.parse(guardados);
+    if (!Array.isArray(parsed)) return [VEHICULO_DEFAULT];
+    const validos = parsed.filter(esVehiculoValido);
+    return validos.length > 0 ? validos : [VEHICULO_DEFAULT];
   } catch {
     return [VEHICULO_DEFAULT];
   }
@@ -26,7 +50,11 @@ function cargarVehiculos(): Vehiculo[] {
 
 function cargarActivoId(): string {
   if (typeof window === "undefined") return "default";
-  return localStorage.getItem(ACTIVO_KEY) ?? "default";
+  try {
+    return localStorage.getItem(ACTIVO_KEY) ?? "default";
+  } catch {
+    return "default";
+  }
 }
 
 export function useVehiculo() {
